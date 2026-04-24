@@ -152,6 +152,23 @@ h1, h2, h3 { color: var(--terra-800); margin: 0 0 .6rem 0; }
 .stat .label { color: var(--text-muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .03em; }
 .stat .value { font-size: 2rem; font-weight: 700; color: var(--terra-800); margin-top: .2rem; }
 
+.stat--modo-full .stat-full-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+.stat--modo-full .value {
+  margin-top: 0;
+  font-size: 1.75rem;
+  line-height: 1;
+}
+.stat--modo-full .switch {
+  transform: scale(0.92);
+  transform-origin: center right;
+}
+
 /* ====== Formulários ====== */
 form .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .8rem; }
 label { display: block; font-size: .85rem; color: var(--text-muted); margin-bottom: .25rem; font-weight: 600; }
@@ -226,25 +243,7 @@ textarea { resize: vertical; min-height: 80px; }
 .text-muted { color: var(--text-muted); }
 .spacer { flex: 1; }
 
-/* ====== Modo FULL: interruptor ====== */
-.card-full .path-code {
-  font-size: 0.82rem;
-  background: var(--terra-100);
-  padding: 0.15rem 0.45rem;
-  border-radius: 4px;
-  word-break: break-all;
-}
-.full-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-.full-row--interval { align-items: flex-end; }
 .full-label { font-weight: 700; color: var(--terra-800); margin-bottom: 0.15rem; display: block; }
-.interval-controls { display: flex; align-items: center; gap: 0.5rem; }
-.input-interval { width: 7rem; max-width: 100%; }
 
 .card-frases .textarea-frases {
   font-family: inherit;

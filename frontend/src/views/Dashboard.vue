@@ -24,8 +24,6 @@ function atualizarRelogio() {
 const status = ref(null)
 const ultimos = ref([])
 const erro = ref('')
-const msgFull = ref('')
-const intervaloSeg = ref(30)
 const salvandoFull = ref(false)
 
 const frasesEmail = ref('')
@@ -34,7 +32,6 @@ const salvandoFrases = ref(false)
 
 async function carregar() {
   erro.value = ''
-  msgFull.value = ''
   msgFrases.value = ''
   try {
     const [s, e] = await Promise.all([
@@ -43,7 +40,6 @@ async function carregar() {
     ])
     status.value = s.data
     ultimos.value = e.data
-    intervaloSeg.value = s.data.full_scan_interval_seconds ?? 30
     frasesEmail.value = s.data.email_frases_dashboard ?? ''
   } catch (err) {
     erro.value = err.response?.data?.detail || 'Não foi possível conectar à API'
@@ -51,16 +47,12 @@ async function carregar() {
 }
 
 async function patchFull(payload) {
-  if (!status.value?.full_env_enabled) return
   salvandoFull.value = true
-  msgFull.value = ''
   try {
     const { data } = await api.patch('/api/settings/full', payload)
     status.value = data
-    intervaloSeg.value = data.full_scan_interval_seconds
-    msgFull.value = 'Guardado.'
   } catch (err) {
-    msgFull.value = err.response?.data?.detail || 'Erro ao guardar'
+    erro.value = err.response?.data?.detail || 'Erro ao guardar o modo FULL'
     await carregar()
   } finally {
     salvandoFull.value = false
@@ -88,21 +80,6 @@ async function salvarFrasesEmail() {
 async function onToggleFull(ativado) {
   await patchFull({ full_scan_active: ativado })
 }
-
-async function aplicarIntervalo() {
-  let n = Number(intervaloSeg.value)
-  if (Number.isNaN(n)) n = 30
-  n = Math.min(3600, Math.max(10, Math.round(n)))
-  intervaloSeg.value = n
-  await patchFull({ full_scan_interval_seconds: n })
-}
-
-watch(
-  () => status.value?.full_scan_interval_seconds,
-  (v) => {
-    if (v != null) intervaloSeg.value = v
-  }
-)
 
 watch(
   () => status.value?.email_frases_dashboard,
@@ -146,41 +123,14 @@ onUnmounted(() => {
         <div class="label">Envios (total)</div>
         <div class="value">{{ status.total_envios }}</div>
       </div>
-      <div class="stat">
+      <div class="stat stat--modo-full">
         <div class="label">Modo FULL (ativo)</div>
-        <div class="value" :style="{ color: status.full_enabled ? 'var(--ok)' : 'var(--err)' }">
-          {{ status.full_enabled ? 'ON' : 'OFF' }}
-        </div>
-        <small class="text-muted">Servidor + interruptor</small>
-      </div>
-      <div class="stat">
-        <div class="label">Autenticação</div>
-        <div class="value" :style="{ color: status.auth_enabled ? 'var(--ok)' : 'var(--warn)' }">
-          {{ status.auth_enabled ? 'ATIVA' : 'DESATIVADA' }}
-        </div>
-      </div>
-    </div>
-
-    <div v-if="status" class="card card-full">
-      <h3>Modo FULL (automático)</h3>
-      <p class="text-muted mb-4" style="font-size: 0.92rem">
-        Pasta vigiada:
-        <code class="path-code">{{ status.full_watch_folder }}</code>
-      </p>
-
-      <div v-if="!status.full_env_enabled" class="alert alert-warn">
-        O FULL está <strong>desligado no servidor</strong> (<code>FULL_ENABLED=false</code> no
-        <code>.env</code>). O interruptor só fica disponível quando o administrador activar o FULL
-        no ficheiro de configuração e reiniciar a API.
-      </div>
-
-      <template v-else>
-        <div class="full-row">
-          <div>
-            <div class="full-label">Processar pasta automaticamente</div>
-            <div class="text-muted" style="font-size: 0.85rem">
-              Desligado = não varre nem envia; ligado = respeita o intervalo abaixo.
-            </div>
+        <div class="stat-full-row">
+          <div
+            class="value"
+            :style="{ color: status.full_scan_active ? 'var(--ok)' : 'var(--err)' }"
+          >
+            {{ status.full_scan_active ? 'ON' : 'OFF' }}
           </div>
           <label class="switch" :class="{ 'switch--disabled': salvandoFull }">
             <input
@@ -193,31 +143,13 @@ onUnmounted(() => {
             <span class="switch-slider" />
           </label>
         </div>
-
-        <div class="full-row full-row--interval mt-4">
-          <div>
-            <label class="full-label" for="int-full">Intervalo entre varreduras (segundos)</label>
-            <div class="text-muted" style="font-size: 0.85rem">Entre 10 e 3600 segundos.</div>
-          </div>
-          <div class="interval-controls">
-            <input
-              id="int-full"
-              type="number"
-              min="10"
-              max="3600"
-              step="1"
-              v-model.number="intervaloSeg"
-              :disabled="salvandoFull"
-              class="input-interval"
-            />
-            <button type="button" class="btn btn-primary btn-sm" :disabled="salvandoFull" @click="aplicarIntervalo">
-              Aplicar
-            </button>
-          </div>
+      </div>
+      <div class="stat">
+        <div class="label">Autenticação</div>
+        <div class="value" :style="{ color: status.auth_enabled ? 'var(--ok)' : 'var(--warn)' }">
+          {{ status.auth_enabled ? 'ATIVA' : 'DESATIVADA' }}
         </div>
-
-        <p v-if="msgFull" class="text-muted mt-2" style="font-size: 0.88rem">{{ msgFull }}</p>
-      </template>
+      </div>
     </div>
 
     <div v-if="status" class="card card-frases">

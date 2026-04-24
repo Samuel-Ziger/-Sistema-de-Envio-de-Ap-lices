@@ -1,5 +1,5 @@
 """Status geral do sistema e ajustes do modo FULL (painel)."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -51,12 +51,6 @@ def atualizar_full_runtime(
     db: Session = Depends(get_db),
     _=Depends(require_user),
 ):
-    if not settings.full_enabled:
-        raise HTTPException(
-            400,
-            "O modo FULL está desligado no servidor (.env FULL_ENABLED=false). "
-            "Não é possível alterar pelo painel.",
-        )
     rc = db.get(models.RuntimeConfig, 1)
     if rc is None:
         rc = models.RuntimeConfig(
