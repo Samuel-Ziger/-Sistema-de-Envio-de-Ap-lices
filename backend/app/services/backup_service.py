@@ -20,16 +20,20 @@ def _slug(texto: str) -> str:
 
 def caminho_backup(cliente_nome: str, nome_arquivo: str) -> Path:
     data = datetime.now().strftime("%Y-%m")
-    destino = Path(settings.backup_folder) / data / _slug(cliente_nome)
+    root = settings.data_path(settings.backup_folder)
+    destino = root / data / _slug(cliente_nome)
     destino.mkdir(parents=True, exist_ok=True)
     return destino / nome_arquivo
 
 
-def copiar_para_backup(origem: str | Path, cliente_nome: str) -> Path:
+def copiar_para_backup(
+    origem: str | Path, cliente_nome: str, nome_arquivo_destino: str | None = None
+) -> Path:
     origem = Path(origem)
     if not origem.exists():
         raise FileNotFoundError(origem)
-    destino = caminho_backup(cliente_nome, origem.name)
+    nome = nome_arquivo_destino or origem.name
+    destino = caminho_backup(cliente_nome, nome)
     # Se arquivo já existe, acrescenta timestamp
     if destino.exists():
         ts = datetime.now().strftime("%H%M%S")

@@ -21,13 +21,23 @@ function sair() {
         <h1>Envio de Apólices</h1>
         <small>Painel de Operações</small>
       </div>
-      <nav>
+      <nav class="sidebar-nav">
         <RouterLink class="nav-link" to="/dashboard">Dashboard</RouterLink>
         <RouterLink class="nav-link" to="/clientes">Clientes</RouterLink>
         <RouterLink class="nav-link" to="/envio">Envio Avulso</RouterLink>
         <RouterLink class="nav-link" to="/historico">Histórico</RouterLink>
         <RouterLink v-if="mostrarUsuarios" class="nav-link" to="/usuarios">Usuários</RouterLink>
       </nav>
+      <footer class="sidebar-credit">
+        <a
+          href="https://www.zontech.online/"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Zona Tech — zontech.online"
+        >
+          Zona Tech
+        </a>
+      </footer>
     </aside>
 
     <main class="app-main">

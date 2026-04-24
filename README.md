@@ -39,10 +39,13 @@ hora), sobe o PDF, envia imediatamente. Backup e log idênticos ao FULL.
 
 ## Backup
 
-Todo envio bem-sucedido é copiado para:
+Todo envio bem-sucedido é copiado para (sempre relativos à pasta **`backend/`**, não ao diretório de onde arranca o processo):
 ```
-backup/<YYYY-MM>/<nome_cliente>/<arquivo.pdf>
+backend/backup/<YYYY-MM>/<nome_cliente>/<arquivo.pdf>
 ```
+
+**Capa:** coloque `capa.pdf` em **`backend/capas/`** (ou ajuste `CAPA_*` no `backend/.env`).
+Se existir, o sistema junta **capa + apólice** num único PDF antes do backup e do e-mail; veja `backend/capas/README.txt`.
 
 ## Login
 

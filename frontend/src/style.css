@@ -45,8 +45,33 @@ h1, h2, h3 { color: var(--terra-800); margin: 0 0 .6rem 0; }
 .app-sidebar {
   background: var(--terra-800);
   color: var(--terra-100);
-  padding: 1.2rem 0;
+  padding: 1.2rem 0 0;
   position: sticky; top: 0; height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-nav {
+  flex: 1;
+}
+.sidebar-credit {
+  padding: 0.75rem 1.2rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: auto;
+}
+.sidebar-credit a {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--terra-500);
+  text-decoration: none;
+  opacity: 0.85;
+}
+.sidebar-credit a:hover {
+  color: var(--terra-300);
+  text-decoration: underline;
+  opacity: 1;
 }
 .app-brand {
   padding: 0 1.2rem 1rem 1.2rem;
@@ -76,6 +101,34 @@ h1, h2, h3 { color: var(--terra-800); margin: 0 0 .6rem 0; }
   margin-bottom: 1rem;
 }
 .app-topbar h2 { margin: 0; color: var(--terra-800); }
+
+/* Relógio discreto (Dashboard, canto superior direito) */
+.app-topbar .topbar-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+.dash-clock {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+.dash-clock__date {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  max-width: 16rem;
+}
+.dash-clock__time {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--terra-600);
+  opacity: 0.92;
+}
 
 /* ====== Cards / Painéis ====== */
 .card {
@@ -172,6 +225,82 @@ textarea { resize: vertical; min-height: 80px; }
 .mb-2 { margin-bottom: .5rem; } .mb-4 { margin-bottom: 1rem; }
 .text-muted { color: var(--text-muted); }
 .spacer { flex: 1; }
+
+/* ====== Modo FULL: interruptor ====== */
+.card-full .path-code {
+  font-size: 0.82rem;
+  background: var(--terra-100);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  word-break: break-all;
+}
+.full-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.full-row--interval { align-items: flex-end; }
+.full-label { font-weight: 700; color: var(--terra-800); margin-bottom: 0.15rem; display: block; }
+.interval-controls { display: flex; align-items: center; gap: 0.5rem; }
+.input-interval { width: 7rem; max-width: 100%; }
+
+.card-frases .textarea-frases {
+  font-family: inherit;
+  line-height: 1.45;
+  min-height: 8rem;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+  flex-shrink: 0;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--terra-300);
+  border-radius: 999px;
+  transition: background 0.2s;
+  border: 1px solid var(--border);
+}
+.switch-slider::before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 2px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.switch input:checked + .switch-slider {
+  background: var(--ok);
+  border-color: #6a966a;
+}
+.switch input:checked + .switch-slider::before {
+  transform: translateX(24px);
+}
+.switch input:focus-visible + .switch-slider {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.switch--disabled .switch-slider {
+  opacity: 0.55;
+  cursor: wait;
+}
 
 /* ====== Login ====== */
 .login-wrap {

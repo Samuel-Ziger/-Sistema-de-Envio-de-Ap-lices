@@ -36,9 +36,8 @@ class FullWatcher:
         self._thread = threading.Thread(target=self._run, daemon=True, name="full-watcher")
         self._thread.start()
         log.info(
-            "Modo FULL iniciado - pasta=%s intervalo=%ss",
-            settings.full_watch_folder,
-            settings.full_scan_interval_seconds,
+            "Modo FULL iniciado - pasta=%s (intervalo e ON/OFF pelo painel / tabela runtime_config)",
+            settings.data_path(settings.full_watch_folder),
         )
 
     def stop(self) -> None:
@@ -48,14 +47,32 @@ class FullWatcher:
 
     # -------------- loop --------------
     def _run(self) -> None:
-        pasta = Path(settings.full_watch_folder)
+        pasta = settings.data_path(settings.full_watch_folder)
         pasta.mkdir(parents=True, exist_ok=True)
         while not self._stop.is_set():
+            db: Session = SessionLocal()
             try:
-                self._scan(pasta)
-            except Exception as e:
-                log.exception("Erro no watcher FULL: %s", e)
-            self._stop.wait(settings.full_scan_interval_seconds)
+                rc = db.get(models.RuntimeConfig, 1)
+                scan_active = rc.full_scan_active if rc else True
+                interval = (
+                    rc.full_scan_interval_seconds
+                    if rc
+                    else settings.full_scan_interval_seconds
+                )
+            finally:
+                db.close()
+
+            interval = max(10, min(3600, int(interval)))
+
+            if scan_active:
+                try:
+                    self._scan(pasta)
+                except Exception as e:
+                    log.exception("Erro no watcher FULL: %s", e)
+            else:
+                log.debug("FULL pausado pelo painel (interruptor desligado)")
+
+            self._stop.wait(interval)
 
     def _scan(self, pasta: Path) -> None:
         pdfs = sorted(p for p in pasta.glob("*.pdf") if p.is_file())
@@ -97,7 +114,7 @@ class FullWatcher:
 
         # Move PDF para processados (sucesso) ou mantém (erro) para retentativa manual
         if envio.status == "enviado":
-            destino = Path(settings.processed_folder)
+            destino = settings.data_path(settings.processed_folder)
             destino.mkdir(parents=True, exist_ok=True)
             try:
                 pdf.rename(destino / pdf.name)

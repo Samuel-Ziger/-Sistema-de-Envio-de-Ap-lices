@@ -104,7 +104,26 @@ class StatusOut(BaseModel):
     status: str
     versao: str
     auth_enabled: bool
+    # FULL: full_enabled = ativo de facto (.env FULL_ENABLED e interruptor do painel)
     full_enabled: bool
+    full_env_enabled: bool
+    full_scan_active: bool
+    full_scan_interval_seconds: int
     full_watch_folder: str
+    # Frases extra no corpo do e-mail (painel)
+    email_frases_dashboard: str = ""
     total_clientes: int
     total_envios: int
+
+
+class FullRuntimePatch(BaseModel):
+    """Atualização parcial do modo FULL (painel)."""
+
+    full_scan_active: bool | None = None
+    full_scan_interval_seconds: int | None = Field(None, ge=10, le=3600)
+
+
+class EmailFrasesPatch(BaseModel):
+    """Texto extra incluído no corpo HTML de todos os envios."""
+
+    email_frases_dashboard: str = Field(default="", max_length=12000)

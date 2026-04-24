@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 import pdfplumber
+from pypdf import PdfReader, PdfWriter
 
 
 # ====== Regex ======
@@ -99,3 +100,48 @@ def formatar_cnpj(doc: str) -> str:
     if len(d) != 14:
         return doc
     return f"{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:]}"
+
+
+def _reader_desbloqueado(pdf_path: Path) -> PdfReader:
+    r = PdfReader(str(pdf_path), strict=False)
+    if r.is_encrypted:
+        # Palavra-passe vazia comum em PDFs "protegidos" só para edição
+        if r.decrypt("") == 0:
+            raise ValueError(f"PDF encriptado sem palavra-passe: {pdf_path.name}")
+    return r
+
+
+def mesclar_capa_e_apolice(capa: Path, apolice: Path, saida: Path) -> Path:
+    """Junta PDFs na ordem: páginas da capa, depois páginas da apólice. Escreve em `saida`.
+
+    Usa ``PdfWriter.append(reader)`` (com ``import_outline=False``), mais robusto com
+    PDFs de seguradoras/Word do que ``append_pages_from_reader``, que falha em vários casos.
+    """
+    capa = Path(capa)
+    apolice = Path(apolice)
+    saida = Path(saida)
+    if not capa.is_file():
+        raise FileNotFoundError(capa)
+    if not apolice.is_file():
+        raise FileNotFoundError(apolice)
+
+    r_capa = _reader_desbloqueado(capa)
+    r_apol = _reader_desbloqueado(apolice)
+    n_esperado = len(r_capa.pages) + len(r_apol.pages)
+
+    writer = PdfWriter()
+    writer.append(r_capa, import_outline=False)
+    writer.append(r_apol, import_outline=False)
+
+    saida.parent.mkdir(parents=True, exist_ok=True)
+    with saida.open("wb") as fh:
+        writer.write(fh)
+
+    ver = PdfReader(str(saida), strict=False)
+    n_saida = len(ver.pages)
+    if n_saida != n_esperado:
+        raise ValueError(
+            f"Junção incompleta: esperadas {n_esperado} páginas (capa {len(r_capa.pages)} + "
+            f"apólice {len(r_apol.pages)}), obtidas {n_saida}."
+        )
+    return saida

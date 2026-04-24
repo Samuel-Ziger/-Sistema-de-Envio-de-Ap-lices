@@ -85,9 +85,10 @@ async def envio_avulso(
         raise HTTPException(400, "Informe cliente_id OU cliente_novo")
 
     # 2. Salvar upload em pasta temporária
-    Path(settings.upload_folder).mkdir(parents=True, exist_ok=True)
+    up = settings.data_path(settings.upload_folder)
+    up.mkdir(parents=True, exist_ok=True)
     nome_seguro = f"{uuid.uuid4().hex}_{arquivo.filename or 'anexo.pdf'}"
-    destino_up = Path(settings.upload_folder) / nome_seguro
+    destino_up = up / nome_seguro
     with destino_up.open("wb") as fh:
         fh.write(await arquivo.read())
 
@@ -114,7 +115,7 @@ async def envio_avulso(
 
     # 5. Move arquivo original p/ processados
     try:
-        proc = Path(settings.processed_folder)
+        proc = settings.data_path(settings.processed_folder)
         proc.mkdir(parents=True, exist_ok=True)
         destino_up.rename(proc / nome_seguro)
     except Exception:

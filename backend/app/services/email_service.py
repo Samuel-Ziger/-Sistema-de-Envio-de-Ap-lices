@@ -23,6 +23,10 @@ TEMPLATE_PADRAO = """
     <p>Segue em anexo sua apólice{% if numero_apolice %} de número
        <strong>{{ numero_apolice }}</strong>{% endif %}.</p>
     {% if mensagem %}<p>{{ mensagem }}</p>{% endif %}
+    {% if frases_dashboard %}
+    <div style="margin:1em 0;padding:.85em 1em;background:#f9f6f3;border-left:3px solid #8D6E63;
+                font-size:0.95em;line-height:1.45;color:#3E2723;white-space:pre-wrap;">{{ frases_dashboard }}</div>
+    {% endif %}
     <p>Em caso de dúvidas, responda este e-mail.</p>
     <p>Atenciosamente,<br/>{{ from_name }}</p>
   </body>
@@ -35,6 +39,7 @@ def renderizar_template(
     cliente_nome: str,
     numero_apolice: str | None,
     mensagem: str | None,
+    frases_dashboard: str | None = None,
     template_path: str | None = None,
 ) -> str:
     tpl = TEMPLATE_PADRAO
@@ -46,6 +51,7 @@ def renderizar_template(
         cliente_nome=cliente_nome,
         numero_apolice=numero_apolice,
         mensagem=mensagem,
+        frases_dashboard=(frases_dashboard or "").strip() or None,
         from_name=settings.smtp_from_name,
     )
 
@@ -64,6 +70,7 @@ def enviar_email(
     assunto: str,
     corpo_html: str,
     anexos: Iterable[str | Path] = (),
+    nome_anexo_pdf: str | None = None,
 ) -> None:
     if not settings.smtp_host:
         raise RuntimeError("SMTP não configurado (.env SMTP_HOST vazio)")
@@ -77,15 +84,18 @@ def enviar_email(
 
     for caminho in anexos:
         p = Path(caminho)
-        if not p.exists():
-            continue
+        if not p.is_file():
+            raise FileNotFoundError(f"Anexo PDF em falta ou inválido: {p}")
         with p.open("rb") as fh:
-            msg.add_attachment(
-                fh.read(),
-                maintype="application",
-                subtype="pdf",
-                filename=p.name,
-            )
+            dados = fh.read()
+        if not dados:
+            raise ValueError(f"Anexo PDF vazio: {p}")
+        msg.add_attachment(
+            dados,
+            maintype="application",
+            subtype="pdf",
+            filename=nome_anexo_pdf or p.name,
+        )
 
     contexto = ssl.create_default_context()
     if settings.smtp_use_tls:

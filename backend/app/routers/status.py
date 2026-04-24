@@ -1,26 +1,105 @@
-"""Status geral do sistema."""
-from fastapi import APIRouter, Depends
+"""Status geral do sistema e ajustes do modo FULL (painel)."""
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..config import settings
 from .. import models, schemas
+from ..auth import require_user
 
 
 router = APIRouter(prefix="/api", tags=["status"])
 
 
-@router.get("/status", response_model=schemas.StatusOut)
-def status(db: Session = Depends(get_db)):
+def _montar_status(db: Session) -> schemas.StatusOut:
+    rc = db.get(models.RuntimeConfig, 1)
+    env_on = settings.full_enabled
+    scan_active = rc.full_scan_active if rc else True
+    interval = (
+        rc.full_scan_interval_seconds
+        if rc
+        else settings.full_scan_interval_seconds
+    )
+    interval = max(10, min(3600, int(interval)))
+    effective = bool(env_on and scan_active)
+    frases = ""
+    if rc and rc.email_frases_dashboard:
+        frases = rc.email_frases_dashboard.strip()
     return schemas.StatusOut(
         status="ok",
         versao="1.0.0",
         auth_enabled=settings.auth_enabled,
-        full_enabled=settings.full_enabled,
-        full_watch_folder=settings.full_watch_folder,
+        full_enabled=effective,
+        full_env_enabled=env_on,
+        full_scan_active=scan_active,
+        full_scan_interval_seconds=interval,
+        full_watch_folder=str(settings.data_path(settings.full_watch_folder)),
+        email_frases_dashboard=frases,
         total_clientes=db.query(models.Cliente).count(),
         total_envios=db.query(models.Envio).count(),
     )
+
+
+@router.get("/status", response_model=schemas.StatusOut)
+def status(db: Session = Depends(get_db)):
+    return _montar_status(db)
+
+
+@router.patch("/settings/full", response_model=schemas.StatusOut)
+def atualizar_full_runtime(
+    body: schemas.FullRuntimePatch,
+    db: Session = Depends(get_db),
+    _=Depends(require_user),
+):
+    if not settings.full_enabled:
+        raise HTTPException(
+            400,
+            "O modo FULL está desligado no servidor (.env FULL_ENABLED=false). "
+            "Não é possível alterar pelo painel.",
+        )
+    rc = db.get(models.RuntimeConfig, 1)
+    if rc is None:
+        rc = models.RuntimeConfig(
+            id=1,
+            full_scan_active=True,
+            full_scan_interval_seconds=settings.full_scan_interval_seconds,
+        )
+        db.add(rc)
+        db.flush()
+
+    if body.full_scan_active is not None:
+        rc.full_scan_active = body.full_scan_active
+    if body.full_scan_interval_seconds is not None:
+        rc.full_scan_interval_seconds = max(
+            10, min(3600, body.full_scan_interval_seconds)
+        )
+
+    db.commit()
+    db.refresh(rc)
+    return _montar_status(db)
+
+
+@router.patch("/settings/email-frases", response_model=schemas.StatusOut)
+def atualizar_email_frases(
+    body: schemas.EmailFrasesPatch,
+    db: Session = Depends(get_db),
+    _=Depends(require_user),
+):
+    rc = db.get(models.RuntimeConfig, 1)
+    if rc is None:
+        rc = models.RuntimeConfig(
+            id=1,
+            full_scan_active=True,
+            full_scan_interval_seconds=settings.full_scan_interval_seconds,
+            email_frases_dashboard=body.email_frases_dashboard.strip() or None,
+        )
+        db.add(rc)
+    else:
+        v = body.email_frases_dashboard.strip()
+        rc.email_frases_dashboard = v or None
+    db.commit()
+    db.refresh(rc)
+    return _montar_status(db)
 
 
 @router.get("/health")

@@ -54,11 +54,23 @@ class Settings(BaseSettings):
     upload_folder: str = "./uploads"
     processed_folder: str = "./processados"
 
+    # Capa: PDF colocado em capa_folder (ex.: ./capas/capa.pdf) é unido ANTES da apólice no envio.
+    capa_enabled: bool = True
+    capa_folder: str = "./capas"
+    capa_arquivo_padrao: str = "capa.pdf"
+
     @property
     def cors_list(self) -> list[str]:
         if self.cors_origins.strip() == "*":
             return ["*"]
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    def data_path(self, configured: str) -> Path:
+        """Caminhos relativos no .env são sempre em relação à pasta backend/, não ao cwd."""
+        p = Path(configured)
+        if p.is_absolute():
+            return p.resolve()
+        return (BASE_DIR / p).resolve()
 
     def ensure_dirs(self) -> None:
         for rel in (
@@ -66,11 +78,14 @@ class Settings(BaseSettings):
             self.upload_folder,
             self.processed_folder,
             self.full_watch_folder,
+            self.capa_folder,
         ):
-            Path(rel).mkdir(parents=True, exist_ok=True)
-        # pasta do SQLite
+            self.data_path(rel).mkdir(parents=True, exist_ok=True)
+        # pasta do SQLite (./data/... relativo ao backend/)
         if self.database_url.startswith("sqlite:///"):
             db_path = Path(self.database_url.replace("sqlite:///", "", 1))
+            if not db_path.is_absolute():
+                db_path = (BASE_DIR / db_path).resolve()
             db_path.parent.mkdir(parents=True, exist_ok=True)
 
 

@@ -46,6 +46,18 @@ class Envio(Base):
     cliente: Mapped["Cliente"] = relationship(back_populates="envios")
 
 
+class RuntimeConfig(Base):
+    """Configuração em tempo de execução (uma linha, id=1). Controla o watcher FULL pelo painel."""
+
+    __tablename__ = "runtime_config"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    full_scan_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    full_scan_interval_seconds: Mapped[int] = mapped_column(Integer, default=30)
+    # Texto extra no corpo HTML de todos os envios (definido no Dashboard)
+    email_frases_dashboard: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class Usuario(Base):
     __tablename__ = "usuarios"
 

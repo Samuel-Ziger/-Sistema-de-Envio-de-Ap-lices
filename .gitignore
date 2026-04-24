@@ -18,6 +18,9 @@ backend/.env
 frontend/.env
 !*.env.example
 
+# Capa PDF local (modelo fica em backend/capas/README.txt)
+backend/capas/*.pdf
+
 # Dados
 backend/data/
 backend/backup/
