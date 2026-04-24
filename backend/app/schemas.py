@@ -109,6 +109,7 @@ class StatusOut(BaseModel):
     full_env_enabled: bool
     full_scan_active: bool
     full_scan_interval_seconds: int
+    full_scan_exec_time: str = "08:00"
     full_watch_folder: str
     # Frases extra no corpo do e-mail (painel)
     email_frases_dashboard: str = ""
@@ -121,6 +122,11 @@ class FullRuntimePatch(BaseModel):
 
     full_scan_active: bool | None = None
     full_scan_interval_seconds: int | None = Field(None, ge=10, le=3600)
+    full_scan_exec_time: str | None = Field(
+        None,
+        pattern=r"^([01]\d|2[0-3]):[0-5]\d$",
+        description="Horário diário do FULL no formato HH:MM",
+    )
 
 
 class EmailFrasesPatch(BaseModel):

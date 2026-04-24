@@ -54,6 +54,8 @@ class RuntimeConfig(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     full_scan_active: Mapped[bool] = mapped_column(Boolean, default=True)
     full_scan_interval_seconds: Mapped[int] = mapped_column(Integer, default=30)
+    # Horário diário de execução do FULL (HH:MM). Ex.: "08:30"
+    full_scan_exec_time: Mapped[str | None] = mapped_column(String(5), nullable=True)
     # Texto extra no corpo HTML de todos os envios (definido no Dashboard)
     email_frases_dashboard: Mapped[str | None] = mapped_column(Text, nullable=True)
 

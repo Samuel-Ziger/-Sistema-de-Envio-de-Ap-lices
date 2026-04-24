@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from datetime import datetime, date
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -25,6 +26,7 @@ class FullWatcher:
     def __init__(self) -> None:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._last_daily_scan_date: date | None = None
 
     def start(self) -> None:
         if not settings.full_enabled:
@@ -59,6 +61,7 @@ class FullWatcher:
                     if rc
                     else settings.full_scan_interval_seconds
                 )
+                exec_time = rc.full_scan_exec_time if rc else "08:00"
             finally:
                 db.close()
 
@@ -66,13 +69,37 @@ class FullWatcher:
 
             if scan_active:
                 try:
-                    self._scan(pasta)
+                    if self._deve_executar_agora(exec_time):
+                        self._scan(pasta)
                 except Exception as e:
                     log.exception("Erro no watcher FULL: %s", e)
             else:
                 log.debug("FULL pausado pelo painel (interruptor desligado)")
 
             self._stop.wait(interval)
+
+    def _deve_executar_agora(self, exec_time: str | None) -> bool:
+        """Executa uma vez por dia no horário HH:MM definido.
+
+        Se o horário estiver inválido/vazio, mantém comportamento antigo (scan por intervalo).
+        """
+        if not exec_time:
+            return True
+        try:
+            hora = int(exec_time[0:2])
+            minuto = int(exec_time[3:5])
+            if exec_time[2] != ":":
+                return True
+        except Exception:
+            return True
+
+        agora = datetime.now()
+        hoje = agora.date()
+        momento_programado = agora.replace(hour=hora, minute=minuto, second=0, microsecond=0)
+        if agora >= momento_programado and self._last_daily_scan_date != hoje:
+            self._last_daily_scan_date = hoje
+            return True
+        return False
 
     def _scan(self, pasta: Path) -> None:
         pdfs = sorted(p for p in pasta.glob("*.pdf") if p.is_file())
@@ -103,14 +130,18 @@ class FullWatcher:
             )
             return
 
-        envio = envio_service.processar_envio(
-            db,
-            cliente=cliente,
-            caminho_pdf=pdf,
-            tipo_envio="FULL",
-            numero_apolice=dados.numero_apolice,
-            nome_arquivo_original=pdf.name,
-        )
+        try:
+            envio = envio_service.processar_envio(
+                db,
+                cliente=cliente,
+                caminho_pdf=pdf,
+                tipo_envio="FULL",
+                numero_apolice=dados.numero_apolice,
+                nome_arquivo_original=pdf.name,
+            )
+        except ValueError as e:
+            log.warning("FULL: %s", e)
+            return
 
         # Move PDF para processados (sucesso) ou mantém (erro) para retentativa manual
         if envio.status == "enviado":

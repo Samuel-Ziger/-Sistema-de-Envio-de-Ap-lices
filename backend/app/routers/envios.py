@@ -102,16 +102,19 @@ async def envio_avulso(
             pass  # não interrompe o envio
 
     # 4. Processar envio
-    envio = envio_service.processar_envio(
-        db,
-        cliente=cliente,
-        caminho_pdf=destino_up,
-        tipo_envio="AVULSO",
-        numero_apolice=numero_apolice,
-        assunto_customizado=assunto,
-        mensagem_customizada=mensagem,
-        nome_arquivo_original=arquivo.filename,
-    )
+    try:
+        envio = envio_service.processar_envio(
+            db,
+            cliente=cliente,
+            caminho_pdf=destino_up,
+            tipo_envio="AVULSO",
+            numero_apolice=numero_apolice,
+            assunto_customizado=assunto,
+            mensagem_customizada=mensagem,
+            nome_arquivo_original=arquivo.filename,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
     # 5. Move arquivo original p/ processados
     try:

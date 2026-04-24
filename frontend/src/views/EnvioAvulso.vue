@@ -7,8 +7,6 @@ const clienteId = ref(null)
 const criarNovo = ref(false)
 const novoCliente = reactive({ nome: '', email: '', cpf: '', cnpj: '', telefone: '' })
 const numeroApolice = ref('')
-const assunto = ref('')
-const mensagem = ref('')
 const extrairDados = ref(true)
 const arquivo = ref(null)
 const enviando = ref(false)
@@ -42,8 +40,6 @@ async function enviar() {
     fd.append('cliente_id', clienteId.value)
   }
   if (numeroApolice.value) fd.append('numero_apolice', numeroApolice.value)
-  if (assunto.value) fd.append('assunto', assunto.value)
-  if (mensagem.value) fd.append('mensagem', mensagem.value)
   fd.append('extrair_dados', extrairDados.value ? 'true' : 'false')
 
   enviando.value = true
@@ -136,10 +132,6 @@ onMounted(carregarClientes)
         </div>
         <div class="row mt-2">
           <div>
-            <label>Assunto (opcional)</label>
-            <input v-model="assunto" placeholder="Default: Envio de Apolice - <número>" />
-          </div>
-          <div>
             <label>Extrair dados do PDF?</label>
             <select v-model="extrairDados">
               <option :value="true">Sim</option>
@@ -147,10 +139,9 @@ onMounted(carregarClientes)
             </select>
           </div>
         </div>
-        <div class="mt-2">
-          <label>Mensagem adicional</label>
-          <textarea v-model="mensagem" />
-        </div>
+        <p class="text-muted mt-2" style="font-size: 0.9rem">
+          O envio avulso usa obrigatoriamente as frases configuradas no Dashboard.
+        </p>
       </div>
 
       <button type="submit" class="btn btn-accent" :disabled="enviando">

@@ -25,10 +25,14 @@ const status = ref(null)
 const ultimos = ref([])
 const erro = ref('')
 const salvandoFull = ref(false)
+const salvandoHoraFull = ref(false)
+const msgHoraFull = ref('')
+const horaExecucaoFull = ref('08:00')
 
 const frasesEmail = ref('')
 const msgFrases = ref('')
 const salvandoFrases = ref(false)
+const editandoFrase = ref(false)
 
 async function carregar() {
   erro.value = ''
@@ -41,6 +45,8 @@ async function carregar() {
     status.value = s.data
     ultimos.value = e.data
     frasesEmail.value = s.data.email_frases_dashboard ?? ''
+    editandoFrase.value = !Boolean((s.data.email_frases_dashboard ?? '').trim())
+    horaExecucaoFull.value = s.data.full_scan_exec_time ?? '08:00'
   } catch (err) {
     erro.value = err.response?.data?.detail || 'Não foi possível conectar à API'
   }
@@ -63,12 +69,18 @@ async function salvarFrasesEmail() {
   salvandoFrases.value = true
   msgFrases.value = ''
   try {
+    const frase = (frasesEmail.value || '').replace(/\s+/g, ' ').trim()
+    if (!frase) {
+      msgFrases.value = 'Informe uma frase antes de guardar.'
+      return
+    }
     const { data } = await api.patch('/api/settings/email-frases', {
-      email_frases_dashboard: frasesEmail.value,
+      email_frases_dashboard: frase,
     })
     status.value = data
     frasesEmail.value = data.email_frases_dashboard ?? ''
-    msgFrases.value = 'Frases guardadas. Passam a ser usadas em todos os envios (FULL e avulso).'
+    editandoFrase.value = false
+    msgFrases.value = 'Frase guardada.'
   } catch (err) {
     msgFrases.value = err.response?.data?.detail || 'Erro ao guardar'
     await carregar()
@@ -81,10 +93,39 @@ async function onToggleFull(ativado) {
   await patchFull({ full_scan_active: ativado })
 }
 
+async function salvarHoraExecucaoFull() {
+  msgHoraFull.value = ''
+  if (!/^\d{2}:\d{2}$/.test(horaExecucaoFull.value || '')) {
+    msgHoraFull.value = 'Informe um horário válido (HH:MM).'
+    return
+  }
+  salvandoHoraFull.value = true
+  try {
+    const { data } = await api.patch('/api/settings/full', {
+      full_scan_exec_time: horaExecucaoFull.value,
+    })
+    status.value = data
+    horaExecucaoFull.value = data.full_scan_exec_time ?? horaExecucaoFull.value
+    msgHoraFull.value = 'Horário de execução do FULL guardado.'
+  } catch (err) {
+    msgHoraFull.value = err.response?.data?.detail || 'Erro ao guardar horário'
+    await carregar()
+  } finally {
+    salvandoHoraFull.value = false
+  }
+}
+
 watch(
   () => status.value?.email_frases_dashboard,
   (v) => {
     if (v !== undefined && v !== null && status.value) frasesEmail.value = v
+  }
+)
+
+watch(
+  () => status.value?.full_scan_exec_time,
+  (v) => {
+    if (v) horaExecucaoFull.value = v
   }
 )
 
@@ -153,25 +194,59 @@ onUnmounted(() => {
     </div>
 
     <div v-if="status" class="card card-frases">
+      <h3>Horário de execução do FULL</h3>
+      <label class="full-label" for="hora-full">Hora (HH:MM)</label>
+      <div class="full-time-row">
+        <input
+          id="hora-full"
+          v-model="horaExecucaoFull"
+          type="time"
+          :disabled="salvandoHoraFull"
+          step="60"
+          class="input-time"
+        />
+        <button
+          type="button"
+          class="btn btn-primary"
+          :disabled="salvandoHoraFull"
+          @click="salvarHoraExecucaoFull"
+        >
+          Definir hora
+        </button>
+      </div>
+      <div class="mt-2">
+        <span v-if="msgHoraFull" class="text-muted" style="font-size: 0.88rem">{{ msgHoraFull }}</span>
+      </div>
+    </div>
+
+    <div v-if="status" class="card card-frases">
       <h3>Frases no e-mail</h3>
       <p class="text-muted mb-2" style="font-size: 0.92rem">
-        Texto extra incluído no <strong>corpo</strong> de todos os envios (modo FULL e envio avulso),
-        abaixo da mensagem principal. Pode usar várias linhas. Deixe vazio para não acrescentar nada.
+        A frase é obrigatória para envio no modo FULL e avulso.
       </p>
-      <label class="full-label" for="tx-frases">Frases</label>
-      <textarea
-        id="tx-frases"
-        v-model="frasesEmail"
-        rows="6"
-        :disabled="salvandoFrases"
-        placeholder="Ex.: Agradecemos a preferência. Em caso de sinistro, contacte o número..."
-        class="textarea-frases"
-      />
-      <div class="mt-2 flex gap-2 items-center">
-        <button type="button" class="btn btn-primary" :disabled="salvandoFrases" @click="salvarFrasesEmail">
-          Guardar frases
+      <div v-if="editandoFrase">
+        <label class="full-label" for="tx-frases">Frase</label>
+        <input
+          id="tx-frases"
+          v-model="frasesEmail"
+          :disabled="salvandoFrases"
+          placeholder="Ex.: Agradecemos a preferência."
+          maxlength="300"
+        />
+        <div class="mt-2 flex gap-2 items-center">
+          <button type="button" class="btn btn-primary" :disabled="salvandoFrases" @click="salvarFrasesEmail">
+            Guardar frase
+          </button>
+          <span v-if="msgFrases" class="text-muted" style="font-size: 0.88rem">{{ msgFrases }}</span>
+        </div>
+      </div>
+      <div v-else>
+        <p class="text-muted" style="font-size: 0.95rem; margin: 0 0 0.5rem 0">
+          <strong>Frase atual:</strong> {{ status.email_frases_dashboard || '—' }}
+        </p>
+        <button type="button" class="btn btn-ghost btn-sm" @click="editandoFrase = true">
+          Editar frase
         </button>
-        <span v-if="msgFrases" class="text-muted" style="font-size: 0.88rem">{{ msgFrases }}</span>
       </div>
     </div>
 

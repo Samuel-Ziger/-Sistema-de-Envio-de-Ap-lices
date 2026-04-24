@@ -10,7 +10,6 @@
     - Faz npm install e build do frontend
     - Copia .env.example para .env (se não existir)
     - Adiciona as pastas de binários ao PATH do sistema
-    - Copia inicializadores/ (atalhos .bat para máquina local e Windows Server)
     - Registra dois serviços Windows: EnvioApolices-API e EnvioApolices-Front (opcional)
 
 .NOTES
@@ -137,10 +136,6 @@ function Deploy-Sources {
     Copy-Item -Path (Join-Path $root "backend")   -Destination $InstallDir -Recurse -Force
     if (-not $SkipFrontend) {
         Copy-Item -Path (Join-Path $root "frontend") -Destination $InstallDir -Recurse -Force
-    }
-    $ini = Join-Path $root "inicializadores"
-    if (Test-Path $ini) {
-        Copy-Item -Path $ini -Destination $InstallDir -Recurse -Force
     }
     Copy-Item -Path $PSScriptRoot -Destination $InstallDir -Recurse -Force
 

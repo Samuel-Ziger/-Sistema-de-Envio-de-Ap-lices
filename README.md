@@ -9,9 +9,6 @@ painel administrativo web e modo de envio automático.
 envio-sistema/
 ├── backend/              FastAPI + SQLite + watcher FULL
 ├── frontend/             Vue 3 + Vite (tema terra)
-├── inicializadores/      Atalhos .bat — ver README.md (índice)
-│   ├── maquina-local/    PC / dev (README com passo a passo)
-│   └── windows-server/   Serviços NSSM (README com passo a passo)
 ├── installer/            Instalador PowerShell p/ Windows Server
 └── README.md
 ```
@@ -62,19 +59,20 @@ Ver [installer/README-INSTALL.md](installer/README-INSTALL.md).
 TL;DR: PowerShell como admin, `cd installer`, `.\install.ps1`. Instala tudo
 (Python, Node, NSSM), cria venv, compila o front, registra os serviços.
 
-Atalhos para **subir/parar serviços** no servidor: pasta
-[`inicializadores/windows-server/`](inicializadores/windows-server/README.md).
+Após instalar no servidor, gerencie os serviços com PowerShell (`Start-Service`,
+`Stop-Service`, `Restart-Service`) ou pelo painel de serviços do Windows.
 
 ---
 
-## Inicializadores (Windows, duplo clique)
+## Inicialização rápida (Windows, duplo clique)
 
-Índice geral: **[`inicializadores/README.md`](inicializadores/README.md)**.
+Foram simplificados os inicializadores para apenas dois scripts, cada um dentro
+da sua pasta:
 
-| Cenário | Pasta |
+| Componente | Script |
 |--------|--------|
-| PC normal / desenvolvimento (janelas `cmd`, sem NSSM) | [`inicializadores/maquina-local/`](inicializadores/maquina-local/README.md) |
-| Já instalou com `installer/install.ps1` (serviços Windows) | [`inicializadores/windows-server/`](inicializadores/windows-server/README.md) |
+| Backend | `backend/iniciar-backend.bat` |
+| Frontend | `frontend/iniciar-frontend.bat` |
 
 ---
 

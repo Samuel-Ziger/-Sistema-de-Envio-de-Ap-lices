@@ -63,6 +63,10 @@ def _migrate_runtime_config_columns() -> None:
             conn.execute(
                 text("ALTER TABLE runtime_config ADD COLUMN email_frases_dashboard TEXT")
             )
+        if "full_scan_exec_time" not in cols:
+            conn.execute(
+                text("ALTER TABLE runtime_config ADD COLUMN full_scan_exec_time VARCHAR(5)")
+            )
 
 
 def _seed_runtime_config() -> None:
@@ -78,6 +82,7 @@ def _seed_runtime_config() -> None:
                     id=1,
                     full_scan_active=True,
                     full_scan_interval_seconds=settings.full_scan_interval_seconds,
+                    full_scan_exec_time="08:00",
                 )
             )
             s.commit()

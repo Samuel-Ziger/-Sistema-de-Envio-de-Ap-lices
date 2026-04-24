@@ -32,16 +32,17 @@ O script faz automaticamente:
 7. Registra os serviços Windows `EnvioApolices-API` e `EnvioApolices-Front`
 8. Libera as portas no firewall
 
-## Atalhos no servidor (iniciar / parar serviços)
+## Gerenciar serviços no servidor
 
-Na máquina onde correu o instalador, use a pasta copiada para o destino, por exemplo:
+Depois da instalação, use PowerShell como administrador:
 
-`C:\envio-sistema\inicializadores\windows-server\`
-
-- **`Iniciar-Servicos-Windows.bat`** — inicia API e front (executar **como Administrador**).
-- **`Parar-Servicos-Windows.bat`** — para os serviços.
-
-Resumo: ver **`inicializadores\windows-server\README.md`** no repositório (o mesmo ficheiro é copiado para `InstallDir`).
+```powershell
+Start-Service EnvioApolices-API
+Start-Service EnvioApolices-Front
+Get-Service EnvioApolices-*
+Stop-Service EnvioApolices-Front -ErrorAction SilentlyContinue
+Stop-Service EnvioApolices-API -ErrorAction SilentlyContinue
+```
 
 ## Após instalar
 

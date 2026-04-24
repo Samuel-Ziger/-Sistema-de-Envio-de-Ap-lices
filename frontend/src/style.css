@@ -186,6 +186,26 @@ input, select, textarea {
 input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 textarea { resize: vertical; min-height: 80px; }
 
+input[type="file"] {
+  padding: 0.35rem 0.45rem;
+  background: var(--terra-50);
+  border-style: dashed;
+}
+input[type="file"]::file-selector-button {
+  margin-right: 0.7rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--terra-700);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+}
+input[type="file"]::file-selector-button:hover {
+  background: var(--terra-800);
+}
+
 /* ====== Botões ====== */
 .btn {
   display: inline-flex; align-items: center; gap: .4rem;
@@ -249,6 +269,15 @@ textarea { resize: vertical; min-height: 80px; }
   font-family: inherit;
   line-height: 1.45;
   min-height: 8rem;
+}
+
+.full-time-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.full-time-row .input-time {
+  max-width: 170px;
 }
 
 .switch {

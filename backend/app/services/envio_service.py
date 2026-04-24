@@ -73,6 +73,13 @@ def processar_envio(
 ) -> models.Envio:
     caminho_pdf = Path(caminho_pdf)
     pdf_final, nome_final, temp_mesclado = _preparar_pdf_final(caminho_pdf)
+    frases_dashboard = _frases_dashboard_email(db)
+
+    # Regra do painel: FULL e AVULSO só podem ocorrer com frases definidas.
+    if not frases_dashboard:
+        raise ValueError(
+            "Defina as frases no Dashboard para permitir envios."
+        )
 
     envio = models.Envio(
         cliente_id=cliente.id,
@@ -98,8 +105,8 @@ def processar_envio(
         corpo = email_service.renderizar_template(
             cliente_nome=cliente.nome,
             numero_apolice=numero_apolice,
-            mensagem=mensagem_customizada,
-            frases_dashboard=_frases_dashboard_email(db),
+            mensagem=None,
+            frases_dashboard=frases_dashboard,
         )
         email_service.enviar_email(
             destinatario=cliente.email,

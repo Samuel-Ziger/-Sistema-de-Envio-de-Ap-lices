@@ -29,11 +29,6 @@ backend/processados/
 backend/entrada/
 backend/logs/
 
-# PyInstaller (inicializadores/maquina-local/Gerar-Exe-Iniciador.bat)
-inicializadores/maquina-local/IniciarEnvioApolices.spec
-inicializadores/maquina-local/.pyinstaller-build/
-inicializadores/maquina-local/dist-exe/
-
 # Editor
 .vscode/
 .idea/
