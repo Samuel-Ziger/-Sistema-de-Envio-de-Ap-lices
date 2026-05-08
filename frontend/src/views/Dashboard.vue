@@ -222,7 +222,7 @@ onUnmounted(() => {
     <div v-if="status" class="card card-frases">
       <h3>Frases no e-mail</h3>
       <p class="text-muted mb-2" style="font-size: 0.92rem">
-        A frase é obrigatória para envio no modo FULL e avulso.
+        A frase é obrigatória para envio no modo FULL e no envio manual.
       </p>
       <div v-if="editandoFrase">
         <label class="full-label" for="tx-frases">Frase</label>

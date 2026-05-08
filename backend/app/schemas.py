@@ -35,29 +35,176 @@ class ClienteOut(ClienteBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ========= Auto =========
+class AutoBase(BaseModel):
+    placa: str
+    marca: str | None = None
+    modelo: str | None = None
+    ano: str | None = None
+    chassi: str | None = None
+    renavam: str | None = None
+    cor: str | None = None
+    combustivel: str | None = None
+    observacoes: str | None = None
+    ativo: bool = True
+
+
+class AutoCreate(AutoBase):
+    cliente_id: int
+
+
+class AutoUpdate(BaseModel):
+    placa: str | None = None
+    marca: str | None = None
+    modelo: str | None = None
+    ano: str | None = None
+    chassi: str | None = None
+    renavam: str | None = None
+    cor: str | None = None
+    combustivel: str | None = None
+    observacoes: str | None = None
+    ativo: bool | None = None
+    cliente_id: int | None = None
+
+
+class AutoOut(AutoBase):
+    id: int
+    cliente_id: int
+    cliente_nome: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ========= Tipo de envio =========
+class TipoEnvioBase(BaseModel):
+    codigo: str = Field(min_length=1, max_length=60, pattern=r"^[a-z0-9_\-]+$")
+    nome: str
+    descricao: str | None = None
+    ordem: int = 0
+    na_fila_full: bool = True
+    corpo_email_id: int | None = None
+    ativo: bool = True
+
+
+class TipoEnvioCreate(TipoEnvioBase):
+    pass
+
+
+class TipoEnvioUpdate(BaseModel):
+    codigo: str | None = Field(None, min_length=1, max_length=60, pattern=r"^[a-z0-9_\-]+$")
+    nome: str | None = None
+    descricao: str | None = None
+    ordem: int | None = None
+    na_fila_full: bool | None = None
+    corpo_email_id: int | None = None
+    ativo: bool | None = None
+
+
+class TipoEnvioOut(TipoEnvioBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    pasta: str | None = None  # caminho absoluto da subpasta
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TipoEnvioOrdemPatch(BaseModel):
+    """Payload para reordenar lista (drag&drop): lista de codigos na ordem."""
+    ordem: list[str]
+
+
+# ========= Corpo de e-mail =========
+class CorpoEmailBase(BaseModel):
+    nome: str
+    descricao: str | None = None
+    assunto: str | None = None
+    html: str = ""
+    ativo: bool = True
+
+
+class CorpoEmailCreate(CorpoEmailBase):
+    pass
+
+
+class CorpoEmailUpdate(BaseModel):
+    nome: str | None = None
+    descricao: str | None = None
+    assunto: str | None = None
+    html: str | None = None
+    ativo: bool | None = None
+
+
+class CorpoEmailOut(CorpoEmailBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ========= Assinatura =========
+class AssinaturaBase(BaseModel):
+    nome: str
+    pessoa: str | None = None
+    cargo: str | None = None
+    email_contato: str | None = None
+    telefone: str | None = None
+    ativo: bool = True
+
+
+class AssinaturaCreate(AssinaturaBase):
+    pass
+
+
+class AssinaturaUpdate(BaseModel):
+    nome: str | None = None
+    pessoa: str | None = None
+    cargo: str | None = None
+    email_contato: str | None = None
+    telefone: str | None = None
+    ativo: bool | None = None
+
+
+class AssinaturaOut(AssinaturaBase):
+    id: int
+    arquivo: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ========= Envio =========
 class EnvioOut(BaseModel):
     id: int
     cliente_id: int
     tipo_envio: str
-    nome_arquivo_original: str | None
-    nome_arquivo_final: str | None
-    numero_apolice: str | None
+    tipo_codigo: str | None = None
+    nome_arquivo_original: str | None = None
+    nome_arquivo_final: str | None = None
+    numero_apolice: str | None = None
     status: str
-    erro_msg: str | None
-    assunto_email: str | None
+    erro_msg: str | None = None
+    assunto_email: str | None = None
+    assinatura_id: int | None = None
     criado_em: datetime
-    enviado_em: datetime | None
+    enviado_em: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
 class EnvioAvulsoPayload(BaseModel):
     cliente_id: int | None = None
-    # se quiser criar cliente no mesmo request:
     cliente_novo: ClienteCreate | None = None
     numero_apolice: str | None = None
     assunto: str | None = None
     mensagem: str | None = None
+
+
+class EnvioDemoOut(BaseModel):
+    """Resposta da rota /demonstrar — devolve assunto e corpo já renderizados."""
+    de: str
+    para: str
+    assunto: str
+    html: str
 
 
 # ========= Usuário =========
@@ -104,32 +251,59 @@ class StatusOut(BaseModel):
     status: str
     versao: str
     auth_enabled: bool
-    # FULL: full_enabled = ativo de facto (.env FULL_ENABLED e interruptor do painel)
     full_enabled: bool
     full_env_enabled: bool
     full_scan_active: bool
     full_scan_interval_seconds: int
     full_scan_exec_time: str = "08:00"
     full_watch_folder: str
-    # Frases extra no corpo do e-mail (painel)
+    full_lote_size: int = 5
+    full_intervalo_lote_min: int = 5
+    full_rescan_horas: int = 1
+    full_modo_ativo: bool = True
+    full_assinatura_id: int | None = None
     email_frases_dashboard: str = ""
     total_clientes: int
     total_envios: int
 
 
 class FullRuntimePatch(BaseModel):
-    """Atualização parcial do modo FULL (painel)."""
-
     full_scan_active: bool | None = None
     full_scan_interval_seconds: int | None = Field(None, ge=10, le=3600)
     full_scan_exec_time: str | None = Field(
-        None,
-        pattern=r"^([01]\d|2[0-3]):[0-5]\d$",
-        description="Horário diário do FULL no formato HH:MM",
+        None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$"
     )
+    full_lote_size: int | None = Field(None, ge=1, le=200)
+    full_intervalo_lote_min: int | None = Field(None, ge=0, le=240)
+    full_rescan_horas: int | None = Field(None, ge=0, le=72)
+    full_modo_ativo: bool | None = None
+    full_assinatura_id: int | None = None
 
 
 class EmailFrasesPatch(BaseModel):
-    """Texto extra incluído no corpo HTML de todos os envios."""
-
     email_frases_dashboard: str = Field(default="", max_length=12000)
+
+
+# ========= Capa =========
+class CapaInfoOut(BaseModel):
+    existe: bool
+    nome: str
+    caminho: str
+    tamanho_bytes: int = 0
+    paginas: int = 0
+    atualizado_em: datetime | None = None
+
+
+# ========= Backup (file explorer) =========
+class BackupItemOut(BaseModel):
+    nome: str
+    caminho_relativo: str
+    eh_pasta: bool
+    tamanho_bytes: int = 0
+    atualizado_em: datetime | None = None
+
+
+class BackupListagemOut(BaseModel):
+    caminho_atual: str
+    parent_relativo: str | None = None
+    itens: list[BackupItemOut]

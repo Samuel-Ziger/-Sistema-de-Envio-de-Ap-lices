@@ -10,7 +10,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .database import init_db, SessionLocal
 from .auth import seed_admin
-from .routers import clientes, envios, auth as auth_router, usuarios, status as status_router
+from .routers import (
+    clientes,
+    envios,
+    auth as auth_router,
+    usuarios,
+    status as status_router,
+    autos,
+    tipos_envio,
+    corpos_email,
+    assinaturas,
+    capa,
+    backup,
+)
 from .services.full_watcher import watcher_global
 
 
@@ -25,13 +37,11 @@ log = logging.getLogger("main")
 async def lifespan(app: FastAPI):
     settings.ensure_dirs()
     init_db()
-    # seed admin
     db = SessionLocal()
     try:
         seed_admin(db)
     finally:
         db.close()
-    # inicia FULL watcher
     watcher_global.start()
     log.info("Backend pronto. auth_enabled=%s full_enabled=%s",
              settings.auth_enabled, settings.full_enabled)
@@ -43,7 +53,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Sistema de Envio de Apolices",
-    version="1.0.0",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
@@ -59,6 +69,12 @@ app.include_router(status_router.router)
 app.include_router(auth_router.router)
 app.include_router(usuarios.router)
 app.include_router(clientes.router)
+app.include_router(autos.router)
+app.include_router(tipos_envio.router)
+app.include_router(corpos_email.router)
+app.include_router(assinaturas.router)
+app.include_router(capa.router)
+app.include_router(backup.router)
 app.include_router(envios.router)
 
 
@@ -66,6 +82,6 @@ app.include_router(envios.router)
 def root():
     return {
         "app": "Sistema de Envio de Apolices",
-        "versao": "1.0.0",
+        "versao": "1.1.0",
         "docs": "/docs",
     }

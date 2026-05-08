@@ -8,11 +8,18 @@ const routes = [
     path: '/',
     component: () => import('../components/AppLayout.vue'),
     children: [
-      { path: 'dashboard', name: 'dashboard', component: () => import('../views/Dashboard.vue') },
-      { path: 'clientes', name: 'clientes', component: () => import('../views/Clientes.vue') },
-      { path: 'envio',    name: 'envio',    component: () => import('../views/EnvioAvulso.vue') },
-      { path: 'historico', name: 'historico', component: () => import('../views/Historico.vue') },
-      { path: 'usuarios', name: 'usuarios', component: () => import('../views/Usuarios.vue') },
+      { path: 'dashboard',  name: 'dashboard',  component: () => import('../views/Dashboard.vue') },
+      { path: 'clientes',   name: 'clientes',   component: () => import('../views/Clientes.vue') },
+      { path: 'autos',      name: 'autos',      component: () => import('../views/Autos.vue') },
+      { path: 'envio',      name: 'envio',      component: () => import('../views/EnvioManual.vue') },
+      { path: 'full-config',name: 'fullConfig', component: () => import('../views/FullConfig.vue') },
+      { path: 'tipos-envio',name: 'tiposEnvio', component: () => import('../views/TiposEnvio.vue') },
+      { path: 'corpos-email', name: 'corposEmail', component: () => import('../views/CorposEmail.vue') },
+      { path: 'assinaturas', name: 'assinaturas', component: () => import('../views/Assinaturas.vue') },
+      { path: 'capa',       name: 'capa',       component: () => import('../views/Capa.vue') },
+      { path: 'backup',     name: 'backup',     component: () => import('../views/Backup.vue') },
+      { path: 'historico',  name: 'historico',  component: () => import('../views/Historico.vue') },
+      { path: 'usuarios',   name: 'usuarios',   component: () => import('../views/Usuarios.vue') },
     ],
   },
 ]
@@ -24,16 +31,15 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
-  // carrega flag de auth_enabled 1 vez
   if (auth.authEnabled === false && !auth._loaded) {
     try {
       await auth.carregarStatus()
-    } catch { /* backend offline: deixa seguir */ }
+    } catch { /* backend offline */ }
     auth._loaded = true
   }
 
   if (to.meta.public) return true
-  if (!auth.authEnabled) return true   // login desativado → libera tudo
+  if (!auth.authEnabled) return true
   if (!auth.token) return { name: 'login', query: { redirect: to.fullPath } }
   return true
 })

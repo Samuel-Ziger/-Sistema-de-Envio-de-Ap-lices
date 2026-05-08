@@ -18,13 +18,20 @@ function sair() {
   <div class="app-shell">
     <aside class="app-sidebar">
       <div class="app-brand">
-        <h1>Envio de Apólices</h1>
+        <h1>Terra Fértil Corretora de Seguros</h1>
         <small>Painel de Operações</small>
       </div>
       <nav class="sidebar-nav">
         <RouterLink class="nav-link" to="/dashboard">Dashboard</RouterLink>
         <RouterLink class="nav-link" to="/clientes">Clientes</RouterLink>
-        <RouterLink class="nav-link" to="/envio">Envio Avulso</RouterLink>
+        <RouterLink class="nav-link" to="/autos">Autos</RouterLink>
+        <RouterLink class="nav-link" to="/envio">Envio Manual</RouterLink>
+        <RouterLink class="nav-link" to="/full-config">FULL — Configuração</RouterLink>
+        <RouterLink class="nav-link" to="/tipos-envio">Tipos de Envio</RouterLink>
+        <RouterLink class="nav-link" to="/corpos-email">Corpos de E-mail</RouterLink>
+        <RouterLink class="nav-link" to="/assinaturas">Assinaturas</RouterLink>
+        <RouterLink class="nav-link" to="/capa">Capa</RouterLink>
+        <RouterLink class="nav-link" to="/backup">Backup</RouterLink>
         <RouterLink class="nav-link" to="/historico">Histórico</RouterLink>
         <RouterLink v-if="mostrarUsuarios" class="nav-link" to="/usuarios">Usuários</RouterLink>
       </nav>
@@ -41,7 +48,7 @@ function sair() {
     </aside>
 
     <main class="app-main">
-      <header class="app-topbar">
+      <header class="app-topbar app-topbar--auth">
         <div>
           <small class="text-muted">
             Autenticação: <strong>{{ auth.authEnabled ? 'ATIVA' : 'DESATIVADA' }}</strong>

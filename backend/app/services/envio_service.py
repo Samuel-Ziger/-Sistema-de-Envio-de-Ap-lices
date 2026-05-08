@@ -1,10 +1,11 @@
-"""Orquestra o ciclo completo de um envio (AVULSO ou FULL).
+"""Orquestra o ciclo completo de um envio (MANUAL ou FULL).
 
 Passos:
-1. Opcionalmente junta capa (PDF em capas/) + apólice num só ficheiro
-2. Copiar PDF (final) para backup
-3. Enviar e-mail com o PDF anexado
-4. Registrar na tabela de envios com status final
+1. Resolve corpo de e-mail (associado ao tipo) + assinatura
+2. Junta capa (PDF) + apólice se capa.pdf existir
+3. Copia para backup
+4. Envia e-mail (com placeholders renderizados, assinatura inline)
+5. Registra na tabela de envios com status final
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -21,14 +23,15 @@ from ..config import settings
 from . import email_service, backup_service, pdf_service
 
 
+log = logging.getLogger(__name__)
+
+
 def _frases_dashboard_email(db: Session) -> str | None:
     rc = db.get(models.RuntimeConfig, 1)
     if not rc or not rc.email_frases_dashboard:
         return None
     t = rc.email_frases_dashboard.strip()
     return t or None
-
-log = logging.getLogger(__name__)
 
 
 def _resolver_caminho_capa() -> Path | None:
@@ -43,7 +46,6 @@ def _resolver_caminho_capa() -> Path | None:
 
 
 def _preparar_pdf_final(original: Path) -> tuple[Path, str, Path | None]:
-    """(ficheiro a usar no backup/email, nome_arquivo_final, temp a apagar ou None)."""
     capa = _resolver_caminho_capa()
     if not capa:
         return original, original.name, None
@@ -60,60 +62,199 @@ def _preparar_pdf_final(original: Path) -> tuple[Path, str, Path | None]:
         return original, original.name, None
 
 
+def _resolver_corpo_email(
+    db: Session, tipo_codigo: str | None
+) -> models.CorpoEmail | None:
+    if not tipo_codigo:
+        return None
+    tipo = (
+        db.query(models.TipoEnvio)
+        .filter(models.TipoEnvio.codigo == tipo_codigo)
+        .first()
+    )
+    if not tipo or not tipo.corpo_email_id:
+        return None
+    return db.get(models.CorpoEmail, tipo.corpo_email_id)
+
+
+def _resolver_assinatura(
+    db: Session, *, tipo_envio: str, override_id: int | None = None
+) -> models.Assinatura | None:
+    if override_id:
+        a = db.get(models.Assinatura, override_id)
+        if a and a.ativo:
+            return a
+    if tipo_envio == "FULL":
+        rc = db.get(models.RuntimeConfig, 1)
+        if rc and rc.full_assinatura_id:
+            a = db.get(models.Assinatura, rc.full_assinatura_id)
+            if a and a.ativo:
+                return a
+    return None
+
+
+def _montar_contexto(
+    *,
+    cliente: models.Cliente,
+    auto: models.Auto | None,
+    numero_apolice: str | None,
+    tipo_envio: str,
+    tipo_codigo: str | None,
+    frases_dashboard: str | None,
+) -> dict[str, Any]:
+    return {
+        # Cliente
+        "nome": cliente.nome or "",
+        "email": cliente.email or "",
+        "cpf": cliente.cpf or "",
+        "cnpj": cliente.cnpj or "",
+        "telefone": cliente.telefone or "",
+        # Apólice
+        "numero_apolice": numero_apolice or "",
+        "tipo_envio": tipo_envio,
+        "tipo_codigo": tipo_codigo or "",
+        "data_envio": datetime.now().strftime("%d/%m/%Y"),
+        # Auto
+        "placa": (auto.placa if auto else "") or "",
+        "marca": (auto.marca if auto else "") or "",
+        "modelo": (auto.modelo if auto else "") or "",
+        "ano": (auto.ano if auto else "") or "",
+        # Outros
+        "frases_dashboard": (frases_dashboard or "").strip(),
+        "from_name": settings.smtp_from_name,
+    }
+
+
+def renderizar_demonstracao(
+    db: Session,
+    *,
+    cliente: models.Cliente,
+    auto: models.Auto | None = None,
+    numero_apolice: str | None = None,
+    tipo_envio: str = "MANUAL",
+    tipo_codigo: str | None = None,
+    assinatura_id: int | None = None,
+    corpo_email_id: int | None = None,
+) -> dict[str, Any]:
+    """Gera dict com os dados que apareceriam no e-mail (assunto + html), sem enviar."""
+    frases = _frases_dashboard_email(db)
+    corpo = None
+    if corpo_email_id:
+        corpo = db.get(models.CorpoEmail, corpo_email_id)
+    if corpo is None:
+        corpo = _resolver_corpo_email(db, tipo_codigo)
+
+    assin = _resolver_assinatura(db, tipo_envio=tipo_envio, override_id=assinatura_id)
+    cid = email_service.gerar_cid() if assin and assin.arquivo else None
+
+    ctx = _montar_contexto(
+        cliente=cliente,
+        auto=auto,
+        numero_apolice=numero_apolice,
+        tipo_envio=tipo_envio,
+        tipo_codigo=tipo_codigo,
+        frases_dashboard=frases,
+    )
+
+    assunto = email_service.formatar_assunto(
+        numero_apolice, custom=(corpo.assunto if corpo else None)
+    )
+    html = email_service.renderizar_template(
+        contexto=ctx,
+        template_html=(corpo.html if corpo and corpo.html else None),
+        assinatura_cid=cid,
+    )
+    return {
+        "de": f"{settings.smtp_from_name} <{settings.smtp_from_email}>",
+        "para": cliente.email,
+        "assunto": assunto,
+        "html": html,
+    }
+
+
 def processar_envio(
     db: Session,
     *,
     cliente: models.Cliente,
     caminho_pdf: str | Path,
-    tipo_envio: str,
+    tipo_envio: str,  # FULL | MANUAL
+    tipo_codigo: str | None = None,
+    auto: models.Auto | None = None,
     numero_apolice: str | None = None,
     assunto_customizado: str | None = None,
-    mensagem_customizada: str | None = None,
+    corpo_email_id: int | None = None,
+    assinatura_id: int | None = None,
     nome_arquivo_original: str | None = None,
 ) -> models.Envio:
     caminho_pdf = Path(caminho_pdf)
     pdf_final, nome_final, temp_mesclado = _preparar_pdf_final(caminho_pdf)
     frases_dashboard = _frases_dashboard_email(db)
 
-    # Regra do painel: FULL e AVULSO só podem ocorrer com frases definidas.
     if not frases_dashboard:
-        raise ValueError(
-            "Defina as frases no Dashboard para permitir envios."
-        )
+        raise ValueError("Defina as frases no Dashboard para permitir envios.")
+
+    # Corpo de e-mail: override > tipo > template padrão
+    corpo: models.CorpoEmail | None = None
+    if corpo_email_id:
+        corpo = db.get(models.CorpoEmail, corpo_email_id)
+    if corpo is None:
+        corpo = _resolver_corpo_email(db, tipo_codigo)
+
+    assin = _resolver_assinatura(db, tipo_envio=tipo_envio, override_id=assinatura_id)
+    assin_path: Path | None = None
+    cid: str | None = None
+    if assin and assin.arquivo:
+        p = settings.data_path(settings.assinaturas_folder) / assin.arquivo
+        if p.is_file():
+            assin_path = p
+            cid = email_service.gerar_cid()
 
     envio = models.Envio(
         cliente_id=cliente.id,
         tipo_envio=tipo_envio,
+        tipo_codigo=tipo_codigo,
         nome_arquivo_original=nome_arquivo_original or caminho_pdf.name,
         nome_arquivo_final=nome_final,
         numero_apolice=numero_apolice,
         status="pendente",
+        assinatura_id=assin.id if assin else None,
     )
     db.add(envio)
     db.commit()
     db.refresh(envio)
 
     try:
-        # 1) backup (PDF já com capa quando configurado)
+        # 1) backup
         destino = backup_service.copiar_para_backup(
             pdf_final, cliente.nome, nome_arquivo_destino=nome_final
         )
         envio.caminho_backup = str(destino)
 
         # 2) e-mail
-        assunto = assunto_customizado or email_service.formatar_assunto(numero_apolice)
-        corpo = email_service.renderizar_template(
-            cliente_nome=cliente.nome,
+        ctx = _montar_contexto(
+            cliente=cliente,
+            auto=auto,
             numero_apolice=numero_apolice,
-            mensagem=None,
+            tipo_envio=tipo_envio,
+            tipo_codigo=tipo_codigo,
             frases_dashboard=frases_dashboard,
+        )
+        assunto = assunto_customizado or email_service.formatar_assunto(
+            numero_apolice, custom=(corpo.assunto if corpo else None)
+        )
+        corpo_html = email_service.renderizar_template(
+            contexto=ctx,
+            template_html=(corpo.html if corpo and corpo.html else None),
+            assinatura_cid=cid,
         )
         email_service.enviar_email(
             destinatario=cliente.email,
             assunto=assunto,
-            corpo_html=corpo,
+            corpo_html=corpo_html,
             anexos=[pdf_final],
             nome_anexo_pdf=nome_final if temp_mesclado is not None else None,
+            assinatura_path=assin_path,
+            assinatura_cid=cid,
         )
 
         envio.assunto_email = assunto

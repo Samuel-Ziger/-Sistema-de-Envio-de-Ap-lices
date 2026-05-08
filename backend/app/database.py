@@ -49,6 +49,8 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=engine)
     _migrate_runtime_config_columns()
+    _migrate_envios_columns()
+    _migrate_avulso_para_manual()
     _seed_runtime_config()
 
 
@@ -67,6 +69,50 @@ def _migrate_runtime_config_columns() -> None:
             conn.execute(
                 text("ALTER TABLE runtime_config ADD COLUMN full_scan_exec_time VARCHAR(5)")
             )
+        if "full_lote_size" not in cols:
+            conn.execute(
+                text("ALTER TABLE runtime_config ADD COLUMN full_lote_size INTEGER DEFAULT 5")
+            )
+        if "full_intervalo_lote_min" not in cols:
+            conn.execute(
+                text("ALTER TABLE runtime_config ADD COLUMN full_intervalo_lote_min INTEGER DEFAULT 5")
+            )
+        if "full_rescan_horas" not in cols:
+            conn.execute(
+                text("ALTER TABLE runtime_config ADD COLUMN full_rescan_horas INTEGER DEFAULT 1")
+            )
+        if "full_modo_ativo" not in cols:
+            conn.execute(
+                text("ALTER TABLE runtime_config ADD COLUMN full_modo_ativo BOOLEAN DEFAULT 1")
+            )
+        if "full_assinatura_id" not in cols:
+            conn.execute(
+                text("ALTER TABLE runtime_config ADD COLUMN full_assinatura_id INTEGER")
+            )
+
+
+def _migrate_envios_columns() -> None:
+    """SQLite: adiciona colunas novas a envios."""
+    insp = inspect(engine)
+    if "envios" not in insp.get_table_names():
+        return
+    cols = {c["name"] for c in insp.get_columns("envios")}
+    with engine.begin() as conn:
+        if "tipo_codigo" not in cols:
+            conn.execute(text("ALTER TABLE envios ADD COLUMN tipo_codigo VARCHAR(60)"))
+        if "assinatura_id" not in cols:
+            conn.execute(text("ALTER TABLE envios ADD COLUMN assinatura_id INTEGER"))
+
+
+def _migrate_avulso_para_manual() -> None:
+    """Renomeia tipo_envio AVULSO -> MANUAL nos envios já existentes."""
+    insp = inspect(engine)
+    if "envios" not in insp.get_table_names():
+        return
+    with engine.begin() as conn:
+        conn.execute(
+            text("UPDATE envios SET tipo_envio='MANUAL' WHERE tipo_envio='AVULSO'")
+        )
 
 
 def _seed_runtime_config() -> None:
@@ -83,6 +129,10 @@ def _seed_runtime_config() -> None:
                     full_scan_active=True,
                     full_scan_interval_seconds=settings.full_scan_interval_seconds,
                     full_scan_exec_time="08:00",
+                    full_lote_size=5,
+                    full_intervalo_lote_min=5,
+                    full_rescan_horas=1,
+                    full_modo_ativo=True,
                 )
             )
             s.commit()

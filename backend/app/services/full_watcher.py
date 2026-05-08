@@ -1,14 +1,12 @@
-"""Modo FULL: varre pasta de entrada, processa PDFs, envia e-mail.
-
-Roda em uma thread separada iniciada no lifespan do FastAPI.
-Usa polling simples (mais confiável que watchdog em mounts de rede Windows).
+"""Modo FULL: varre sub-pastas (uma por TipoEnvio) na ordem definida pelo painel,
+processa em lotes com intervalo entre eles, e revisita a cada N horas durante o dia.
 """
 from __future__ import annotations
 
 import logging
 import threading
 import time
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -27,6 +25,7 @@ class FullWatcher:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._last_daily_scan_date: date | None = None
+        self._last_full_run: datetime | None = None
 
     def start(self) -> None:
         if not settings.full_enabled:
@@ -38,7 +37,7 @@ class FullWatcher:
         self._thread = threading.Thread(target=self._run, daemon=True, name="full-watcher")
         self._thread.start()
         log.info(
-            "Modo FULL iniciado - pasta=%s (intervalo e ON/OFF pelo painel / tabela runtime_config)",
+            "Modo FULL iniciado - pasta=%s",
             settings.data_path(settings.full_watch_folder),
         )
 
@@ -56,65 +55,125 @@ class FullWatcher:
             try:
                 rc = db.get(models.RuntimeConfig, 1)
                 scan_active = rc.full_scan_active if rc else True
-                interval = (
-                    rc.full_scan_interval_seconds
-                    if rc
-                    else settings.full_scan_interval_seconds
-                )
+                modo_ativo = rc.full_modo_ativo if rc else True
+                interval = rc.full_scan_interval_seconds if rc else settings.full_scan_interval_seconds
                 exec_time = rc.full_scan_exec_time if rc else "08:00"
+                rescan_horas = rc.full_rescan_horas if rc else 1
             finally:
                 db.close()
 
             interval = max(10, min(3600, int(interval)))
 
-            if scan_active:
+            if scan_active and modo_ativo:
                 try:
-                    if self._deve_executar_agora(exec_time):
-                        self._scan(pasta)
+                    if self._deve_executar_agora(exec_time, rescan_horas):
+                        self._scan_completo(pasta)
                 except Exception as e:
                     log.exception("Erro no watcher FULL: %s", e)
             else:
-                log.debug("FULL pausado pelo painel (interruptor desligado)")
+                log.debug("FULL pausado (interruptor desligado)")
 
             self._stop.wait(interval)
 
-    def _deve_executar_agora(self, exec_time: str | None) -> bool:
-        """Executa uma vez por dia no horário HH:MM definido.
+    def _deve_executar_agora(self, exec_time: str | None, rescan_horas: int) -> bool:
+        """Executa no horário programado e re-executa a cada N horas no mesmo dia."""
+        agora = datetime.now()
+        hoje = agora.date()
 
-        Se o horário estiver inválido/vazio, mantém comportamento antigo (scan por intervalo).
-        """
-        if not exec_time:
+        # Sem horário definido: scan a cada interval
+        if not exec_time or len(exec_time) != 5 or exec_time[2] != ":":
             return True
         try:
             hora = int(exec_time[0:2])
             minuto = int(exec_time[3:5])
-            if exec_time[2] != ":":
-                return True
         except Exception:
             return True
 
-        agora = datetime.now()
-        hoje = agora.date()
         momento_programado = agora.replace(hour=hora, minute=minuto, second=0, microsecond=0)
-        if agora >= momento_programado and self._last_daily_scan_date != hoje:
+        if agora < momento_programado:
+            return False
+
+        # Primeira execucao do dia
+        if self._last_daily_scan_date != hoje:
             self._last_daily_scan_date = hoje
+            self._last_full_run = agora
+            return True
+
+        # Re-scan a cada rescan_horas (0 = só uma vez por dia)
+        if rescan_horas <= 0:
+            return False
+        if self._last_full_run is None:
+            self._last_full_run = agora
+            return True
+        if agora - self._last_full_run >= timedelta(hours=rescan_horas):
+            self._last_full_run = agora
             return True
         return False
 
-    def _scan(self, pasta: Path) -> None:
+    def _scan_completo(self, pasta_raiz: Path) -> None:
+        """Processa cada TipoEnvio na ordem do painel.
+
+        Para cada tipo: pega PDFs em <raiz>/<codigo>/, processa em lotes
+        de full_lote_size com intervalo de full_intervalo_lote_min minutos.
+        Quando todos os tipos forem percorridos, ainda processa PDFs soltos
+        na raiz (sem tipo).
+        """
+        db: Session = SessionLocal()
+        try:
+            rc = db.get(models.RuntimeConfig, 1)
+            lote = rc.full_lote_size if rc else settings.full_lote_size
+            intervalo_min = rc.full_intervalo_lote_min if rc else settings.full_intervalo_lote_min
+            tipos = (
+                db.query(models.TipoEnvio)
+                .filter(models.TipoEnvio.ativo == True, models.TipoEnvio.na_fila_full == True)  # noqa: E712
+                .order_by(models.TipoEnvio.ordem.asc(), models.TipoEnvio.id.asc())
+                .all()
+            )
+        finally:
+            db.close()
+
+        lote = max(1, min(200, int(lote)))
+        intervalo_seg = max(0, int(intervalo_min)) * 60
+
+        for tipo in tipos:
+            sub = pasta_raiz / tipo.codigo
+            if not sub.is_dir():
+                sub.mkdir(parents=True, exist_ok=True)
+                continue
+            self._scan_pasta(sub, tipo_codigo=tipo.codigo, lote=lote, intervalo_seg=intervalo_seg)
+
+        # PDFs na raiz (compatibilidade com fluxo antigo)
+        self._scan_pasta(pasta_raiz, tipo_codigo=None, lote=lote, intervalo_seg=intervalo_seg)
+
+    def _scan_pasta(
+        self, pasta: Path, *, tipo_codigo: str | None, lote: int, intervalo_seg: int
+    ) -> None:
         pdfs = sorted(p for p in pasta.glob("*.pdf") if p.is_file())
         if not pdfs:
             return
 
-        log.info("FULL: %d PDF(s) encontrados em %s", len(pdfs), pasta)
-        db: Session = SessionLocal()
-        try:
-            for pdf in pdfs:
-                self._processar_um(db, pdf)
-        finally:
-            db.close()
+        log.info(
+            "FULL: %d PDF(s) em %s (tipo=%s, lote=%d, intervalo=%ds)",
+            len(pdfs), pasta, tipo_codigo or "—", lote, intervalo_seg,
+        )
 
-    def _processar_um(self, db: Session, pdf: Path) -> None:
+        for i in range(0, len(pdfs), lote):
+            if self._stop.is_set():
+                return
+            chunk = pdfs[i : i + lote]
+            db: Session = SessionLocal()
+            try:
+                for pdf in chunk:
+                    if self._stop.is_set():
+                        return
+                    self._processar_um(db, pdf, tipo_codigo=tipo_codigo)
+            finally:
+                db.close()
+            # Aguarda intervalo antes do próximo lote (se houver mais pdfs)
+            if i + lote < len(pdfs) and intervalo_seg > 0:
+                self._stop.wait(intervalo_seg)
+
+    def _processar_um(self, db: Session, pdf: Path, *, tipo_codigo: str | None) -> None:
         try:
             dados = pdf_service.extrair_dados(pdf)
         except Exception as e:
@@ -124,11 +183,13 @@ class FullWatcher:
         cliente = self._achar_cliente(db, dados)
         if not cliente:
             log.warning(
-                "FULL: cliente não identificado para %s (cpf=%s cnpj=%s). "
-                "Arquivo permanece na pasta para análise manual.",
+                "FULL: cliente não identificado para %s (cpf=%s cnpj=%s).",
                 pdf.name, dados.cpf, dados.cnpj,
             )
             return
+
+        # Tenta achar auto pelo CPF/CNPJ ou pela placa no texto
+        auto = self._achar_auto(db, cliente, dados)
 
         try:
             envio = envio_service.processar_envio(
@@ -136,6 +197,8 @@ class FullWatcher:
                 cliente=cliente,
                 caminho_pdf=pdf,
                 tipo_envio="FULL",
+                tipo_codigo=tipo_codigo,
+                auto=auto,
                 numero_apolice=dados.numero_apolice,
                 nome_arquivo_original=pdf.name,
             )
@@ -143,7 +206,6 @@ class FullWatcher:
             log.warning("FULL: %s", e)
             return
 
-        # Move PDF para processados (sucesso) ou mantém (erro) para retentativa manual
         if envio.status == "enviado":
             destino = settings.data_path(settings.processed_folder)
             destino.mkdir(parents=True, exist_ok=True)
@@ -163,6 +225,27 @@ class FullWatcher:
             c = db.query(models.Cliente).filter(models.Cliente.cnpj == dados.cnpj).first()
             if c:
                 return c
+        return None
+
+    def _achar_auto(
+        self, db: Session, cliente: models.Cliente, dados: pdf_service.DadosPDF
+    ) -> models.Auto | None:
+        # Heurística: se houver placa no texto e bater com algum auto do cliente, usa.
+        autos = (
+            db.query(models.Auto)
+            .filter(models.Auto.cliente_id == cliente.id, models.Auto.ativo == True)  # noqa: E712
+            .all()
+        )
+        if not autos:
+            return None
+        texto = (dados.texto_completo or "").upper()
+        for a in autos:
+            placa_norm = (a.placa or "").upper().replace("-", "").replace(" ", "")
+            if placa_norm and placa_norm in texto.replace("-", "").replace(" ", ""):
+                return a
+        # Se só tem 1 auto, devolve esse
+        if len(autos) == 1:
+            return autos[0]
         return None
 
 
