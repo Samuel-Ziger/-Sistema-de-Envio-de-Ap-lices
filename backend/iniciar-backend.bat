@@ -4,14 +4,26 @@ setlocal
 cd /d "%~dp0"
 
 if not exist ".venv\Scripts\python.exe" (
-  echo [ERRO] Ambiente virtual nao encontrado em backend\.venv
-  echo Rode a instalacao de dependencias do backend primeiro.
-  pause
-  exit /b 1
+  echo [INFO] Ambiente virtual nao encontrado. Criando .venv...
+  python -m venv .venv
+  if errorlevel 1 (
+    echo [ERRO] Falha ao criar ambiente virtual. Verifique se o Python esta instalado.
+    pause
+    exit /b 1
+  )
 )
 
 if not exist "run.py" (
   echo [ERRO] Ficheiro run.py nao encontrado em backend\
+  pause
+  exit /b 1
+)
+
+echo [INFO] Atualizando dependencias do backend...
+".venv\Scripts\python.exe" -m pip install --upgrade pip >nul
+".venv\Scripts\pip.exe" install -r requirements.txt
+if errorlevel 1 (
+  echo [ERRO] Falha ao instalar dependencias do backend.
   pause
   exit /b 1
 )

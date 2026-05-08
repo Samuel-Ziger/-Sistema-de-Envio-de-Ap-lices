@@ -10,8 +10,19 @@ if not exist "package.json" (
 )
 
 if not exist "node_modules" (
-  echo [ERRO] Dependencias nao encontradas em frontend\node_modules
-  echo Rode npm install dentro da pasta frontend.
+  echo [INFO] Dependencias nao encontradas. Rodando npm install...
+  npm install
+  if errorlevel 1 (
+    echo [ERRO] Falha ao instalar dependencias do frontend.
+    pause
+    exit /b 1
+  )
+)
+
+echo [INFO] Garantindo dependencias atualizadas...
+npm install
+if errorlevel 1 (
+  echo [ERRO] Falha ao atualizar dependencias do frontend.
   pause
   exit /b 1
 )
