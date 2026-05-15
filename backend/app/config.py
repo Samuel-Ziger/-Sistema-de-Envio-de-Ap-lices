@@ -23,6 +23,16 @@ class Settings(BaseSettings):
     # Banco
     database_url: str = "sqlite:///./data/envio.db"
 
+    # Porta de acesso à API (cabeçalho X-Backend-Access-Key) — recomendado em produção
+    backend_access_enabled: bool = False
+    backend_access_key: str = ""
+
+    # Criptografia dupla dos dados de clientes no SQLite (AES-256-GCM x2)
+    data_encryption_enabled: bool = False
+    data_encryption_password: str = ""
+    # Opcional: salt fixo (senão usa ficheiro backend/data/.crypto_salt)
+    data_encryption_salt: str = ""
+
     # Auth
     auth_enabled: bool = False
     secret_key: str = "troque-essa-chave"

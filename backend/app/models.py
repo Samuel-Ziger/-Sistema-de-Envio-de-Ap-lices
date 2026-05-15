@@ -10,10 +10,13 @@ class Cliente(Base):
     __tablename__ = "clientes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    nome: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    cpf: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
-    cnpj: Mapped[str | None] = mapped_column(String(25), nullable=True, index=True)
+    nome: Mapped[str] = mapped_column(String(1024), nullable=False)
+    email: Mapped[str] = mapped_column(String(1024), nullable=False)
+    cpf: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    cnpj: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    cpf_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    cnpj_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    email_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     telefone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)

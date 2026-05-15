@@ -10,6 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .database import init_db, SessionLocal
 from .auth import seed_admin
+from .middleware.backend_access import BackendAccessMiddleware
+from .services.data_crypto_service import validate_security_config
 from .routers import (
     clientes,
     envios,
@@ -37,6 +39,7 @@ log = logging.getLogger("main")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings.ensure_dirs()
+    validate_security_config()
     init_db()
     db = SessionLocal()
     try:
@@ -64,7 +67,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+app.add_middleware(BackendAccessMiddleware)
 
 app.include_router(status_router.router)
 app.include_router(auth_router.router)

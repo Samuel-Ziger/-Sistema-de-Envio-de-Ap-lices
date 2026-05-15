@@ -16,7 +16,7 @@ from ..config import settings
 from ..database import get_db
 from .. import models, schemas
 from ..auth import require_user
-from ..services import envio_service, ocr_service, pdf_service
+from ..services import envio_service, ocr_service, pdf_service, cliente_crypto
 from ..services.pdf_service import PdfRequerSenhaError, PdfSenhaInvalidaError
 
 
@@ -199,11 +199,11 @@ async def analisar_pdf(
     cliente_id = None
     cliente_nome = None
     if dados.cpf:
-        c = db.query(models.Cliente).filter(models.Cliente.cpf == dados.cpf).first()
+        c = cliente_crypto.find_by_cpf(db, dados.cpf)
         if c:
             cliente_id, cliente_nome = c.id, c.nome
     if not cliente_id and dados.cnpj:
-        c = db.query(models.Cliente).filter(models.Cliente.cnpj == dados.cnpj).first()
+        c = cliente_crypto.find_by_cnpj(db, dados.cnpj)
         if c:
             cliente_id, cliente_nome = c.id, c.nome
 
@@ -243,7 +243,7 @@ def _resolver_cliente(
     db: Session, cliente_id: int | None, cliente_novo_json: str | None
 ) -> models.Cliente:
     if cliente_id:
-        cli = db.get(models.Cliente, cliente_id)
+        cli = cliente_crypto.get_by_id(db, cliente_id)
         if not cli:
             raise HTTPException(404, "Cliente informado não existe")
         return cli

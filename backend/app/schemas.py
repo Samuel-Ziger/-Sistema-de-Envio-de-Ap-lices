@@ -321,6 +321,12 @@ class StatusOut(BaseModel):
     total_envios: int
     notificacoes_nao_lidas: int = 0
     ocr_disponivel: bool = False
+    backend_access_enabled: bool = False
+    data_encryption_enabled: bool = False
+
+
+class BackendAccessVerifyIn(BaseModel):
+    chave: str = Field(min_length=1)
 
 
 class FullRuntimePatch(BaseModel):

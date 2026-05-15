@@ -1,12 +1,12 @@
 """CRUD de clientes."""
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from .. import models, schemas
 from ..auth import require_user
 from ..services import lgpd_service
+from ..services import cliente_crypto
 
 
 router = APIRouter(prefix="/api/clientes", tags=["clientes"])
@@ -19,21 +19,7 @@ def listar(
     db: Session = Depends(get_db),
     _=Depends(require_user),
 ):
-    query = db.query(models.Cliente)
-    if q:
-        ilike = f"%{q}%"
-        query = query.filter(
-            or_(
-                models.Cliente.nome.ilike(ilike),
-                models.Cliente.email.ilike(ilike),
-                models.Cliente.cpf.ilike(ilike),
-                models.Cliente.cnpj.ilike(ilike),
-            )
-        )
-    if ativo is not None:
-        query = query.filter(models.Cliente.ativo == ativo)
-
-    return query.order_by(models.Cliente.nome).all()
+    return cliente_crypto.list_clientes(db, q=q, ativo=ativo)
 
 
 @router.get("/duplicados", response_model=list[schemas.ClienteDuplicadoGrupoOut])
@@ -44,7 +30,7 @@ def listar_duplicados(db: Session = Depends(get_db), _=Depends(require_user)):
 
 @router.get("/{cid}", response_model=schemas.ClienteOut)
 def obter(cid: int, db: Session = Depends(get_db), _=Depends(require_user)):
-    c = db.get(models.Cliente, cid)
+    c = cliente_crypto.get_by_id(db, cid)
     if not c:
         raise HTTPException(404, "Cliente não encontrado")
     return c
@@ -60,6 +46,7 @@ def criar(
     db.add(c)
     db.commit()
     db.refresh(c)
+    cliente_crypto.decrypt_cliente_fields(c)
     return c
 
 
@@ -73,10 +60,12 @@ def atualizar(
     c = db.get(models.Cliente, cid)
     if not c:
         raise HTTPException(404, "Cliente não encontrado")
+    cliente_crypto.decrypt_cliente_fields(c)
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(c, k, v)
     db.commit()
     db.refresh(c)
+    cliente_crypto.decrypt_cliente_fields(c)
     return c
 
 

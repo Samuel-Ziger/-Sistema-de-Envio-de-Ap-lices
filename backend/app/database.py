@@ -51,7 +51,42 @@ def init_db() -> None:
     _migrate_runtime_config_columns()
     _migrate_envios_columns()
     _migrate_avulso_para_manual()
+    _migrate_clientes_crypto_columns()
     _seed_runtime_config()
+    _import_crypto_events()
+    _migrate_clientes_encryption_data()
+
+
+def _import_crypto_events() -> None:
+    from .events import cliente_crypto_events  # noqa: F401
+
+
+def _migrate_clientes_encryption_data() -> None:
+    from .services import cliente_crypto
+    from .services.data_crypto_service import encryption_enabled, validate_security_config
+
+    if not encryption_enabled():
+        return
+    validate_security_config()
+    s = SessionLocal()
+    try:
+        cliente_crypto.migrate_plaintext_clientes(s)
+    finally:
+        s.close()
+
+
+def _migrate_clientes_crypto_columns() -> None:
+    insp = inspect(engine)
+    if "clientes" not in insp.get_table_names():
+        return
+    cols = {c["name"] for c in insp.get_columns("clientes")}
+    with engine.begin() as conn:
+        if "cpf_hash" not in cols:
+            conn.execute(text("ALTER TABLE clientes ADD COLUMN cpf_hash VARCHAR(64)"))
+        if "cnpj_hash" not in cols:
+            conn.execute(text("ALTER TABLE clientes ADD COLUMN cnpj_hash VARCHAR(64)"))
+        if "email_hash" not in cols:
+            conn.execute(text("ALTER TABLE clientes ADD COLUMN email_hash VARCHAR(64)"))
 
 
 def _migrate_runtime_config_columns() -> None:

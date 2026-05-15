@@ -8,6 +8,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from .. import models
+from .cliente_crypto import decrypt_cliente_fields
 
 
 def _so_digitos(val: str | None) -> str:
@@ -96,7 +97,8 @@ def excluir_cliente_lgpd(
     c = db.get(models.Cliente, cliente_id)
     if not c:
         raise ValueError("Cliente não encontrado")
-    if confirmar_nome.strip().lower() != c.nome.strip().lower():
+    decrypt_cliente_fields(c)
+    if confirmar_nome.strip().lower() != (c.nome or "").strip().lower():
         raise ValueError("Nome de confirmação não coincide com o cadastro")
 
     envios = db.query(models.Envio).filter(models.Envio.cliente_id == cliente_id).all()

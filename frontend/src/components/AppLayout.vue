@@ -6,6 +6,7 @@ import { useUiStore } from '../stores/ui'
 import { api } from '../api'
 import OnboardingTour from './OnboardingTour.vue'
 import BrandLogo from './BrandLogo.vue'
+import BackendAccessGate from './BackendAccessGate.vue'
 
 const auth = useAuthStore()
 const ui = useUiStore()
@@ -141,6 +142,7 @@ onUnmounted(() => {
     </main>
 
     <OnboardingTour v-if="mostrarTour" @fechar="mostrarTour = false" />
+    <BackendAccessGate />
   </div>
 </template>
 

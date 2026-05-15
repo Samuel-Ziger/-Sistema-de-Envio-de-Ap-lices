@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..database import SessionLocal
 from .. import models
-from . import envio_service, notificacoes_service, pdf_service
+from . import envio_service, notificacoes_service, pdf_service, cliente_crypto
 
 
 log = logging.getLogger("full_watcher")
@@ -281,11 +281,11 @@ class FullWatcher:
 
     def _achar_cliente(self, db: Session, dados: pdf_service.DadosPDF) -> models.Cliente | None:
         if dados.cpf:
-            c = db.query(models.Cliente).filter(models.Cliente.cpf == dados.cpf).first()
+            c = cliente_crypto.find_by_cpf(db, dados.cpf)
             if c:
                 return c
         if dados.cnpj:
-            c = db.query(models.Cliente).filter(models.Cliente.cnpj == dados.cnpj).first()
+            c = cliente_crypto.find_by_cnpj(db, dados.cnpj)
             if c:
                 return c
         return None
