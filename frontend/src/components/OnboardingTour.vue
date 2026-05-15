@@ -35,9 +35,10 @@ const passos = [
     soc: true,
     largo: true,
     dicas: [
-      'Ao ativar: todos os envios param (FULL e manual), o modo FULL é desligado e os dados dos clientes são recifrados com uma chave de emergência que você define na hora — diferente da senha do .env.',
-      'Enquanto o SOC estiver ativo, o painel fica restrito; só é possível consultar o estado e desativar com a chave de emergência guardada no cofre da empresa.',
-      'PDFs suspeitos na pasta não serão enviados enquanto o bloqueio estiver ativo — ganha tempo para analisar o incidente com calma.',
+      'Apenas administradores podem ativar o SOC. Utilizadores normais veem se está ativo ou inativo e por quem foi ativado.',
+      'Ao ativar: todos os envios param (FULL e manual) e os dados dos clientes são recifrados com chave de emergência — diferente da senha do .env.',
+      'Só o Admin Diretor (utilizador admindiretor) pode desativar o modo SOC, com a chave de emergência guardada no cofre.',
+      'PDFs suspeitos na pasta não serão enviados enquanto o bloqueio estiver ativo.',
     ],
     avisos: [
       'Guarde a chave de emergência fora do servidor (cofre da equipe de TI). Sem ela, não há como voltar à operação normal.',

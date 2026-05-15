@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from .config import settings
 from .database import get_db
 from . import models
+from .services.diretor_service import is_diretor
 
 
 pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -33,6 +34,14 @@ def verificar_senha(senha: str, hash_: str) -> bool:
         return pwd.verify(senha, hash_)
     except Exception:
         return False
+
+
+def token_extra(user: models.Usuario) -> dict:
+    return {
+        "is_admin": user.is_admin,
+        "is_diretor": is_diretor(user),
+        "must_change_password": user.must_change_password,
+    }
 
 
 def criar_token(subject: str, extra: dict | None = None) -> str:
@@ -111,6 +120,17 @@ def require_admin(user: Annotated[models.Usuario, Depends(require_user)]) -> mod
         return user
     if not user.is_admin:
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
+    return user
+
+
+def require_diretor(user: Annotated[models.Usuario, Depends(require_user)]) -> models.Usuario:
+    if not settings.auth_enabled:
+        return user
+    if not is_diretor(user):
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas o Admin Diretor pode executar esta ação",
+        )
     return user
 
 

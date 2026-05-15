@@ -290,6 +290,7 @@ class UsuarioUpdate(BaseModel):
 class UsuarioOut(UsuarioBase):
     id: int
     must_change_password: bool = False
+    is_diretor: bool = False
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -345,6 +346,7 @@ class StatusOut(BaseModel):
     soc_encryption_active: bool = False
     soc_motivo: str = ""
     soc_ativado_em: str | None = None
+    soc_ativado_por_nome: str = ""
 
 
 class SocStatusOut(BaseModel):
@@ -352,6 +354,7 @@ class SocStatusOut(BaseModel):
     soc_encryption_active: bool
     soc_motivo: str = ""
     soc_ativado_em: str | None = None
+    soc_ativado_por_nome: str = ""
 
 
 class SocAtivarIn(BaseModel):
@@ -369,6 +372,19 @@ class SocAcaoOut(BaseModel):
     mensagem: str
     clientes_recifrados: int | None = None
     clientes_restaurados: int | None = None
+
+
+class DiretorTokenOut(BaseModel):
+    token: str
+    mensagem: str = (
+        "Guarde este token num cofre seguro. Serve apenas para recuperar o acesso do Admin Diretor."
+    )
+
+
+class RecuperarDiretorIn(BaseModel):
+    token: str = Field(min_length=8)
+    senha_nova: str = Field(min_length=8)
+    senha_nova_confirmacao: str = Field(min_length=8)
 
 
 class BackendAccessVerifyIn(BaseModel):

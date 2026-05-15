@@ -5,6 +5,12 @@ const routes = [
   { path: '/', redirect: '/dashboard' },
   { path: '/login', name: 'login', component: () => import('../views/Login.vue'), meta: { public: true } },
   {
+    path: '/recuperar-diretor',
+    name: 'recuperarDiretor',
+    component: () => import('../views/RecuperarDiretor.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/trocar-senha',
     name: 'trocarSenha',
     component: () => import('../views/TrocarSenha.vue'),

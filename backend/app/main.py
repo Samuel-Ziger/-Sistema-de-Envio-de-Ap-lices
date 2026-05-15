@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .database import init_db, SessionLocal
 from .auth import seed_admin
+from .services.diretor_service import seed_diretor
 from .middleware.backend_access import BackendAccessMiddleware
 from .middleware.soc_lockdown import SocLockdownMiddleware
 from .middleware.password_change_lockdown import PasswordChangeLockdownMiddleware
@@ -47,6 +48,7 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         seed_admin(db)
+        seed_diretor(db)
     finally:
         db.close()
     watcher_global.start()

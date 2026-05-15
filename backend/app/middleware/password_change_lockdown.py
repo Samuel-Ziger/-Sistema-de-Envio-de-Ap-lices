@@ -21,6 +21,7 @@ _ALLOWED_PREFIXES = (
     "/api/auth/status",
     "/api/auth/me",
     "/api/auth/trocar-senha",
+    "/api/auth/recuperar-diretor",
     "/api/auth/verificar-acesso-backend",
 )
 

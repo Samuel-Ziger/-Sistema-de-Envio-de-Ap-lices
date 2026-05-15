@@ -53,9 +53,21 @@ def init_db() -> None:
     _migrate_avulso_para_manual()
     _migrate_clientes_crypto_columns()
     _migrate_usuarios_columns()
+    _migrate_diretor_protegido()
     _seed_runtime_config()
     _import_crypto_events()
     _migrate_clientes_encryption_data()
+    _seed_diretor_conta()
+
+
+def _seed_diretor_conta() -> None:
+    from .services.diretor_service import seed_diretor
+
+    s = SessionLocal()
+    try:
+        seed_diretor(s)
+    finally:
+        s.close()
 
 
 def _import_crypto_events() -> None:
@@ -147,6 +159,14 @@ def _migrate_runtime_config_columns() -> None:
             conn.execute(text("ALTER TABLE runtime_config ADD COLUMN soc_motivo TEXT"))
         if "soc_ativado_em" not in cols:
             conn.execute(text("ALTER TABLE runtime_config ADD COLUMN soc_ativado_em DATETIME"))
+        if "soc_ativado_por_id" not in cols:
+            conn.execute(
+                text("ALTER TABLE runtime_config ADD COLUMN soc_ativado_por_id INTEGER")
+            )
+        if "soc_ativado_por_nome" not in cols:
+            conn.execute(
+                text("ALTER TABLE runtime_config ADD COLUMN soc_ativado_por_nome VARCHAR(150)")
+            )
 
 
 def _migrate_usuarios_columns() -> None:
@@ -178,6 +198,33 @@ def _migrate_usuarios_columns() -> None:
             conn.execute(
                 text("UPDATE usuarios SET acesso_backup = 1 WHERE is_admin = 1")
             )
+        if "is_diretor" not in cols:
+            conn.execute(
+                text("ALTER TABLE usuarios ADD COLUMN is_diretor BOOLEAN DEFAULT 0")
+            )
+        if "recovery_token_enc" not in cols:
+            conn.execute(text("ALTER TABLE usuarios ADD COLUMN recovery_token_enc TEXT"))
+
+
+def _migrate_diretor_protegido() -> None:
+    """Marca admindiretor como conta protegida (visível só ao próprio diretor)."""
+    from .config import settings
+
+    insp = inspect(engine)
+    if "usuarios" not in insp.get_table_names():
+        return
+    cols = {c["name"] for c in insp.get_columns("usuarios")}
+    if "is_diretor" not in cols:
+        return
+    un = (settings.diretor_username or "admindiretor").strip().lower()
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE usuarios SET is_diretor = 1, is_admin = 1, acesso_backup = 1 "
+                "WHERE lower(trim(username)) = :u"
+            ),
+            {"u": un},
+        )
 
 
 def _migrate_envios_columns() -> None:

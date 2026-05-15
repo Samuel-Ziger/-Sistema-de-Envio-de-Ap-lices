@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 480
     admin_username: str = "admin"
     admin_password: str = "admin"
+    diretor_username: str = "admindiretor"
+    diretor_password: str = "TfD1r3t0r2026"
+    # Se vazio, é gerado no primeiro seed (letras e números) e guardado cifrado na BD
+    diretor_recovery_token: str = ""
 
     # CORS
     cors_origins: str = "*"

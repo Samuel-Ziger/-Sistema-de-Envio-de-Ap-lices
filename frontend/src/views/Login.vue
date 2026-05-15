@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import BrandLogo from '../components/BrandLogo.vue'
 
@@ -49,6 +49,10 @@ async function entrar() {
       <button class="btn btn-primary" style="margin-top:1.2rem; width:100%;" :disabled="loading">
         {{ loading ? 'Entrando…' : 'Entrar' }}
       </button>
+
+      <p class="text-muted mt-3" style="font-size: 0.85rem; text-align: center">
+        <RouterLink to="/recuperar-diretor">Recuperar acesso Admin Diretor</RouterLink>
+      </p>
     </form>
   </div>
 </template>

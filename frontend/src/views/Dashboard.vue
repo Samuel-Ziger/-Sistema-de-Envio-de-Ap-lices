@@ -2,10 +2,13 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { api } from '../api'
 import { useUiStore } from '../stores/ui'
+import { useAuthStore } from '../stores/auth'
 import NotificacoesPainel from '../components/NotificacoesPainel.vue'
 import SocPainel from '../components/SocPainel.vue'
+import DiretorPainel from '../components/DiretorPainel.vue'
 
 const ui = useUiStore()
+const auth = useAuthStore()
 
 const dataRelogio = ref('')
 const horaRelogio = ref('')
@@ -126,7 +129,14 @@ onUnmounted(() => {
 
     <div v-if="erro" class="alert alert-err">{{ erro }}</div>
 
-    <SocPainel v-if="status" :status="status" @atualizado="carregar" />
+    <DiretorPainel v-if="auth.isDiretor" />
+    <SocPainel
+      v-if="status"
+      :status="status"
+      :is-admin="Boolean(auth.user?.is_admin)"
+      :is-diretor="auth.isDiretor"
+      @atualizado="carregar"
+    />
 
     <NotificacoesPainel v-if="!status?.soc_mode_active" />
 

@@ -41,6 +41,7 @@ def soc_status(db: Session) -> dict:
         "soc_encryption_active": bool(rc.soc_encryption_active),
         "soc_motivo": rc.soc_motivo or "",
         "soc_ativado_em": rc.soc_ativado_em.isoformat(sep=" ") if rc.soc_ativado_em else None,
+        "soc_ativado_por_nome": rc.soc_ativado_por_nome or "",
     }
 
 
@@ -76,7 +77,14 @@ def _apply_plaintext_normal(c: models.Cliente, plain: dict[str, str | None]) -> 
     cliente_crypto.encrypt_cliente_fields(c)
 
 
-def ativar_modo_soc(db: Session, *, chave_soc: str, motivo: str | None = None) -> dict:
+def ativar_modo_soc(
+    db: Session,
+    *,
+    chave_soc: str,
+    motivo: str | None = None,
+    ativado_por_id: int | None = None,
+    ativado_por_nome: str | None = None,
+) -> dict:
     chave = chave_soc.strip()
     if len(chave) < 8:
         raise ValueError("A chave de emergência SOC deve ter pelo menos 8 caracteres")
@@ -95,6 +103,8 @@ def ativar_modo_soc(db: Session, *, chave_soc: str, motivo: str | None = None) -
     rc.full_modo_ativo = False
     rc.soc_motivo = texto_motivo
     rc.soc_ativado_em = datetime.utcnow()
+    rc.soc_ativado_por_id = ativado_por_id
+    rc.soc_ativado_por_nome = (ativado_por_nome or "").strip() or None
     db.commit()
 
     rows = db.query(models.Cliente).all()
@@ -140,6 +150,8 @@ def desativar_modo_soc(db: Session, *, chave_soc: str) -> dict:
     rc.soc_key_verifier = None
     rc.soc_motivo = None
     rc.soc_ativado_em = None
+    rc.soc_ativado_por_id = None
+    rc.soc_ativado_por_nome = None
     db.commit()
 
     log.info("Modo SOC desativado. Clientes restaurados para criptografia normal: %s", migrados)

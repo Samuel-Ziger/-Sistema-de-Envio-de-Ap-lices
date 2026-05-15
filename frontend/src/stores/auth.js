@@ -28,6 +28,7 @@ export const useAuthStore = defineStore('auth', {
       if (!u) return false
       return Boolean(u.is_admin || u.acesso_backup)
     },
+    isDiretor: (s) => Boolean(s.user?.is_diretor),
   },
   actions: {
     async carregarStatus() {

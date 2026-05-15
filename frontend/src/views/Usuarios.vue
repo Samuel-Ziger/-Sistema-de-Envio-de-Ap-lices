@@ -16,11 +16,21 @@ const form = reactive({
 })
 const editandoId = ref(null)
 
+const USERNAME_DIRETOR_RESERVADO = 'admindiretor'
+
+function filtrarVisiveis(lista) {
+  return (lista || []).filter(
+    (u) =>
+      !u.is_diretor &&
+      String(u.username || '').trim().toLowerCase() !== USERNAME_DIRETOR_RESERVADO
+  )
+}
+
 async function carregar() {
   erro.value = ''
   try {
     const { data } = await api.get('/api/usuarios')
-    usuarios.value = data
+    usuarios.value = filtrarVisiveis(data)
   } catch (e) {
     erro.value = e.response?.data?.detail || 'Erro ao carregar usuários (login precisa estar ativo)'
   }
@@ -64,7 +74,18 @@ async function salvar() {
   }
 }
 
+function podeGerir(u) {
+  return (
+    !u.is_diretor &&
+    String(u.username || '').trim().toLowerCase() !== USERNAME_DIRETOR_RESERVADO
+  )
+}
+
 async function remover(u) {
+  if (!podeGerir(u)) {
+    erro.value = 'Este utilizador não pode ser removido.'
+    return
+  }
   if (!confirm(`Remover usuário ${u.username}?`)) return
   try {
     await api.delete(`/api/usuarios/${u.id}`)
@@ -156,8 +177,17 @@ onMounted(carregar)
             <td>{{ u.is_admin || u.acesso_backup ? 'Sim' : 'Não' }}</td>
             <td>{{ u.ativo ? 'Sim' : 'Não' }}</td>
             <td style="text-align:right; white-space:nowrap;">
-              <button class="btn btn-ghost btn-sm" @click="editar(u)">Editar</button>
-              <button class="btn btn-danger btn-sm" @click="remover(u)" style="margin-left:.3rem">Remover</button>
+              <button v-if="podeGerir(u)" class="btn btn-ghost btn-sm" @click="editar(u)">
+                Editar
+              </button>
+              <button
+                v-if="podeGerir(u)"
+                class="btn btn-danger btn-sm"
+                @click="remover(u)"
+                style="margin-left:.3rem"
+              >
+                Remover
+              </button>
             </td>
           </tr>
         </tbody>

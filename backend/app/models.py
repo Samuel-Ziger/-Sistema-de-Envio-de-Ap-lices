@@ -192,6 +192,10 @@ class RuntimeConfig(Base):
     soc_key_verifier: Mapped[str | None] = mapped_column(String(64), nullable=True)
     soc_motivo: Mapped[str | None] = mapped_column(Text, nullable=True)
     soc_ativado_em: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    soc_ativado_por_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("usuarios.id"), nullable=True
+    )
+    soc_ativado_por_nome: Mapped[str | None] = mapped_column(String(150), nullable=True)
 
 
 class Usuario(Base):
@@ -204,6 +208,8 @@ class Usuario(Base):
     senha_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_diretor: Mapped[bool] = mapped_column(Boolean, default=False)
+    recovery_token_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     acesso_backup: Mapped[bool] = mapped_column(Boolean, default=False)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
