@@ -171,6 +171,13 @@ def _migrate_usuarios_columns() -> None:
                 ),
                 {"u": settings.admin_username},
             )
+        if "acesso_backup" not in cols:
+            conn.execute(
+                text("ALTER TABLE usuarios ADD COLUMN acesso_backup BOOLEAN DEFAULT 0")
+            )
+            conn.execute(
+                text("UPDATE usuarios SET acesso_backup = 1 WHERE is_admin = 1")
+            )
 
 
 def _migrate_envios_columns() -> None:

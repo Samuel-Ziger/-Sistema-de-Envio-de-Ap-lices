@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 from ..config import settings
 from .. import schemas
-from ..auth import require_user
+from ..auth import require_backup_access
 
 
 router = APIRouter(prefix="/api/backup", tags=["backup"])
@@ -46,7 +46,7 @@ def _rel_str(p: Path) -> str:
 @router.get("/listar", response_model=schemas.BackupListagemOut)
 def listar(
     caminho: str = Query("", description="Caminho relativo dentro do backup"),
-    _=Depends(require_user),
+    _=Depends(require_backup_access),
 ):
     p = _resolver(caminho)
     p.mkdir(parents=True, exist_ok=True)
@@ -82,7 +82,7 @@ def listar(
 @router.get("/download")
 def download_um(
     caminho: str = Query(..., description="Caminho relativo do arquivo"),
-    _=Depends(require_user),
+    _=Depends(require_backup_access),
 ):
     p = _resolver(caminho)
     if not p.is_file():
@@ -93,7 +93,7 @@ def download_um(
 @router.get("/download-zip")
 def download_zip(
     caminhos: list[str] = Query(..., description="Lista de caminhos relativos"),
-    _=Depends(require_user),
+    _=Depends(require_backup_access),
 ):
     if not caminhos:
         raise HTTPException(400, "Nenhum caminho informado")

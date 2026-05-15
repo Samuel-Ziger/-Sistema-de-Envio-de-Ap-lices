@@ -25,6 +25,9 @@ param(
     [string]$InstallDir = "C:\envio-sistema",
     [string]$ServicePort = "8000",
     [string]$FrontPort = "5173",
+    # IP ou hostname que os outros PCs usam para chegar à API (ex.: 192.168.1.10).
+    # Se vazio, detecta automaticamente o IPv4 da LAN antes do build do frontend.
+    [string]$ServerIp = "",
     [switch]$SkipFrontend,
     [switch]$SkipServices
 )
@@ -175,8 +178,66 @@ function Setup-BackendEnv {
     } finally { Pop-Location }
 }
 
+function Get-LocalLanIPv4 {
+    try {
+        $ip = Get-NetIPConfiguration -ErrorAction Stop |
+            Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } |
+            ForEach-Object { $_.IPv4Address.IPAddress } |
+            Where-Object { $_ -and $_ -notlike '127.*' -and $_ -notlike '169.254.*' } |
+            Select-Object -First 1
+        if ($ip) { return $ip }
+    } catch { }
+
+    $fallback = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' } |
+        Select-Object -ExpandProperty IPAddress -First 1
+    if ($fallback) { return $fallback }
+    return '127.0.0.1'
+}
+
+function Set-DotEnvValue([string]$path, [string]$key, [string]$value) {
+    $lines = if (Test-Path $path) { Get-Content $path -Encoding UTF8 } else { @() }
+    $found = $false
+    $out = foreach ($line in $lines) {
+        if ($line -match "^\s*$([regex]::Escape($key))\s*=") {
+            $found = $true
+            "$key=$value"
+        } else { $line }
+    }
+    if (-not $found) { $out += "$key=$value" }
+    $out | Set-Content -Path $path -Encoding UTF8
+}
+
+function Configure-FrontendEnv {
+    if ($SkipFrontend) { return }
+
+    $apiHost = if ($ServerIp) { $ServerIp.Trim() } else { Get-LocalLanIPv4 }
+    $apiUrl  = "http://${apiHost}:$ServicePort"
+    $feEnv   = Join-Path $InstallDir "frontend\.env"
+    $beEnv   = Join-Path $InstallDir "backend\.env"
+
+    Write-Step "Frontend: VITE_API_URL=$apiUrl (outros PCs na rede usam este endereço na API)"
+    Set-DotEnvValue $feEnv 'VITE_API_URL' $apiUrl
+
+    if (Test-Path $beEnv) {
+        $bk = (Get-Content $beEnv -Encoding UTF8 | Where-Object { $_ -match '^\s*BACKEND_ACCESS_KEY\s*=' } | Select-Object -First 1)
+        if ($bk -match '=\s*(.+)$') {
+            $val = $Matches[1].Trim().Trim('"').Trim("'")
+            if ($val -and $val -notmatch 'cole-aqui') {
+                Set-DotEnvValue $feEnv 'VITE_BACKEND_ACCESS_KEY' $val
+                Write-Ok "VITE_BACKEND_ACCESS_KEY alinhada com backend\.env"
+            }
+        }
+    }
+
+    if ($apiHost -eq '127.0.0.1') {
+        Write-Warn "Não foi possível detectar IP da LAN. Passe -ServerIp 192.168.x.x e rode installer\rebuild-frontend.ps1"
+    }
+}
+
 function Build-Frontend {
     if ($SkipFrontend) { Write-Warn "Frontend ignorado (-SkipFrontend)"; return }
+    Configure-FrontendEnv
     $front = Join-Path $InstallDir "frontend"
     Push-Location $front
     try {
@@ -264,8 +325,10 @@ Register-Services $nssm
 Write-Host ""
 Write-Host "========================================================" -ForegroundColor Green
 Write-Ok  "Instalação concluída."
-Write-Host "  Backend API:  http://<ip-do-servidor>:$ServicePort/docs" -ForegroundColor White
-Write-Host "  Frontend:     http://<ip-do-servidor>:$FrontPort"        -ForegroundColor White
+$shownIp = if ($ServerIp) { $ServerIp.Trim() } else { Get-LocalLanIPv4 }
+Write-Host "  Backend API:  http://${shownIp}:$ServicePort/docs" -ForegroundColor White
+Write-Host "  Frontend:     http://${shownIp}:$FrontPort"        -ForegroundColor White
+Write-Host "  (Nos outros PCs use o IP acima — nunca localhost)" -ForegroundColor Yellow
 Write-Host "  Serviços:     Get-Service EnvioApolices-*"               -ForegroundColor White
 Write-Host "  Config:       $InstallDir\backend\.env"                  -ForegroundColor White
 Write-Host "========================================================" -ForegroundColor Green

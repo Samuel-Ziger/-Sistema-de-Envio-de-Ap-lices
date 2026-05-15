@@ -5,7 +5,15 @@ import { api } from '../api'
 const usuarios = ref([])
 const erro = ref('')
 const ok = ref('')
-const form = reactive({ username: '', nome: '', email: '', senha: '', is_admin: false, ativo: true })
+const form = reactive({
+  username: '',
+  nome: '',
+  email: '',
+  senha: '',
+  is_admin: false,
+  acesso_backup: false,
+  ativo: true,
+})
 const editandoId = ref(null)
 
 async function carregar() {
@@ -25,7 +33,15 @@ function editar(u) {
 
 function limpar() {
   editandoId.value = null
-  Object.assign(form, { username: '', nome: '', email: '', senha: '', is_admin: false, ativo: true })
+  Object.assign(form, {
+    username: '',
+    nome: '',
+    email: '',
+    senha: '',
+    is_admin: false,
+    acesso_backup: false,
+    ativo: true,
+  })
 }
 
 async function salvar() {
@@ -100,6 +116,16 @@ onMounted(carregar)
             </select>
           </div>
           <div>
+            <label>Acesso ao backup</label>
+            <select v-model="form.acesso_backup" :disabled="form.is_admin">
+              <option :value="true">Sim</option>
+              <option :value="false">Não</option>
+            </select>
+            <p class="text-muted" style="font-size:0.82rem;margin-top:0.35rem">
+              Ver e descarregar PDFs em <code>backend/backup/</code>. Administradores têm acesso sempre.
+            </p>
+          </div>
+          <div>
             <label>Ativo</label>
             <select v-model="form.ativo">
               <option :value="true">Sim</option>
@@ -117,7 +143,9 @@ onMounted(carregar)
     <div class="card">
       <table class="table" v-if="usuarios.length">
         <thead>
-          <tr><th>Username</th><th>Nome</th><th>E-mail</th><th>Admin</th><th>Ativo</th><th></th></tr>
+          <tr>
+            <th>Username</th><th>Nome</th><th>E-mail</th><th>Admin</th><th>Backup</th><th>Ativo</th><th></th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="u in usuarios" :key="u.id">
@@ -125,6 +153,7 @@ onMounted(carregar)
             <td>{{ u.nome }}</td>
             <td>{{ u.email || '—' }}</td>
             <td>{{ u.is_admin ? 'Sim' : 'Não' }}</td>
+            <td>{{ u.is_admin || u.acesso_backup ? 'Sim' : 'Não' }}</td>
             <td>{{ u.ativo ? 'Sim' : 'Não' }}</td>
             <td style="text-align:right; white-space:nowrap;">
               <button class="btn btn-ghost btn-sm" @click="editar(u)">Editar</button>

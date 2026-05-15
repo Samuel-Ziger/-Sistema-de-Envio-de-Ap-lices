@@ -259,10 +259,13 @@ const passos = [
       <h3>LGPD e privacidade</h3>
       <ul class="tutorial-lista">
         <li>
-          Restrinja o acesso ao painel (ative <code>AUTH_ENABLED=true</code> quando sair da rede interna).
+          <strong>Backup de apólices</strong> (<code>backend/backup/</code>): estrutura
+          <code>AAAA-MM/nome-cliente/arquivo.pdf</code>. Retenção recomendada: 24 meses
+          (<code>BACKUP_RETENTION_MONTHS</code> no <code>.env</code>) — apague pastas antigas conforme política interna.
         </li>
         <li>
-          Defina política interna de retenção dos PDFs em <code>backend/backup/</code>.
+          Só administradores ou utilizadores com <strong>Acesso ao backup</strong> (em Utilizadores) podem abrir a área
+          Backup no painel; os restantes veem aviso para contactar o administrador.
         </li>
         <li>
           <strong>Exclusão do titular:</strong> em Clientes, botão <strong>LGPD</strong> — remove cadastro,

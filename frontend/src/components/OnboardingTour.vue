@@ -26,6 +26,23 @@ const passos = [
     ],
   },
   {
+    titulo: 'Modo SOC — resposta a incidente de segurança',
+    texto:
+      'O Modo SOC (Security Operations Center) é o «botão de emergência» do sistema. Não é para uso diário: serve quando há suspeita de invasão, acesso indevido ao servidor ou PDF malicioso na pasta de envios.',
+    rota: '/dashboard',
+    soc: true,
+    largo: true,
+    dicas: [
+      'Ao ativar: todos os envios param (FULL e manual), o modo FULL é desligado e os dados dos clientes são recifrados com uma chave de emergência que você define na hora — diferente da senha do .env.',
+      'Enquanto o SOC estiver ativo, o painel fica restrito; só é possível consultar o estado e desativar com a chave de emergência guardada no cofre da empresa.',
+      'PDFs suspeitos na pasta não serão enviados enquanto o bloqueio estiver ativo — ganha tempo para analisar o incidente com calma.',
+    ],
+    avisos: [
+      'Guarde a chave de emergência fora do servidor (cofre da equipa de TI). Sem ela, não há como voltar à operação normal.',
+      'Desative o SOC assim que o incidente estiver controlado — os dados voltam à criptografia padrão do .env.',
+    ],
+  },
+  {
     titulo: 'Envio manual e modelos de PDF',
     texto:
       'Em Envio Manual, escolha o modelo (Tokio Auto/Moto, Yelum, PDF com senha, etc.). O sistema analisa o PDF e sugere cliente e apólice.',
@@ -146,7 +163,8 @@ const passos = [
 
 const atual = computed(() => passos[passo.value])
 const ultimo = computed(() => passo.value >= passos.length - 1)
-const cardLargo = computed(() => atual.value?.largo || atual.value?.aula)
+const cardLargo = computed(() => atual.value?.largo || atual.value?.aula || atual.value?.soc)
+const isSocStep = computed(() => Boolean(atual.value?.soc))
 
 function irParaPasso() {
   if (atual.value?.rota) router.push(atual.value.rota)
@@ -179,11 +197,28 @@ onMounted(irParaPasso)
 
 <template>
   <div class="tour-overlay" role="dialog" aria-modal="true" aria-labelledby="tour-titulo">
-    <div class="tour-card" :class="{ 'tour-card--largo': cardLargo }">
-      <p class="tour-step-label">Passo {{ passo + 1 }} de {{ passos.length }}</p>
+    <div
+      class="tour-card"
+      :class="{ 'tour-card--largo': cardLargo, 'tour-card--soc': isSocStep }"
+    >
+      <p class="tour-step-label" :class="{ 'tour-step-label--soc': isSocStep }">
+        {{ isSocStep ? 'Segurança' : 'Tour' }} · Passo {{ passo + 1 }} de {{ passos.length }}
+      </p>
       <h3 id="tour-titulo">{{ atual.titulo }}</h3>
       <div class="tour-body">
-        <p class="tour-lead">{{ atual.texto }}</p>
+        <div v-if="isSocStep" class="tour-soc-intro">
+          <p class="tour-soc-oque">
+            <strong>O que é?</strong> Modo de contenção após suspeita de ataque ou falha grave de segurança.
+          </p>
+          <p class="tour-soc-para">
+            <strong>Para que serve?</strong> Parar envios de imediato, proteger dados dos clientes com outra chave
+            e impedir que PDFs na pasta sejam processados até o incidente estar resolvido.
+          </p>
+          <p class="tour-soc-onde text-muted">
+            No Dashboard, cartão <strong>Modo SOC</strong> — use «Ativar» só em emergência real.
+          </p>
+        </div>
+        <p class="tour-lead" :class="{ 'tour-lead--soc': isSocStep }">{{ atual.texto }}</p>
 
         <ul v-if="atual.dicas?.length" class="tour-lista">
           <li v-for="(d, i) in atual.dicas" :key="i">{{ d }}</li>
@@ -252,6 +287,31 @@ onMounted(irParaPasso)
 }
 .tour-card--largo {
   max-width: 560px;
+}
+.tour-card--soc {
+  border: 1px solid var(--err);
+  box-shadow: 0 0 0 1px rgba(197, 48, 48, 0.2), 0 16px 48px rgba(0, 0, 0, 0.25);
+}
+.tour-step-label--soc {
+  color: var(--err);
+}
+.tour-soc-intro {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  background: rgba(197, 48, 48, 0.08);
+  border-left: 3px solid var(--err);
+  border-radius: 0 8px 8px 0;
+}
+.tour-soc-intro p {
+  margin: 0 0 0.55rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.tour-soc-intro p:last-child {
+  margin-bottom: 0;
+}
+.tour-lead--soc {
+  font-size: 0.9rem;
 }
 .tour-body {
   overflow-y: auto;

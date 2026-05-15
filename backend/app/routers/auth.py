@@ -5,7 +5,13 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..config import settings
 from .. import models, schemas
-from ..auth import verificar_senha, criar_token, require_user, hash_senha
+from ..auth import (
+    verificar_senha,
+    criar_token,
+    require_user,
+    hash_senha,
+    usuario_tem_acesso_backup,
+)
 from ..services.data_crypto_service import (
     backend_access_enabled,
     encryption_enabled,
@@ -76,6 +82,11 @@ def trocar_senha(
     )
 
 
+@router.get("/me", response_model=schemas.UsuarioOut)
+def usuario_atual(user: models.Usuario = Depends(require_user)):
+    return user
+
+
 @router.get("/status")
 def auth_status():
     return {
@@ -83,6 +94,11 @@ def auth_status():
         "backend_access_enabled": backend_access_enabled(),
         "data_encryption_enabled": encryption_enabled(),
     }
+
+
+@router.get("/pode-acessar-backup")
+def pode_acessar_backup(user: models.Usuario = Depends(require_user)):
+    return {"permitido": usuario_tem_acesso_backup(user)}
 
 
 @router.post("/verificar-acesso-backend")

@@ -270,6 +270,7 @@ class UsuarioBase(BaseModel):
     nome: str
     email: str | None = None
     is_admin: bool = False
+    acesso_backup: bool = False
     ativo: bool = True
 
 
@@ -281,6 +282,7 @@ class UsuarioUpdate(BaseModel):
     nome: str | None = None
     email: str | None = None
     is_admin: bool | None = None
+    acesso_backup: bool | None = None
     ativo: bool | None = None
     senha: str | None = None
 

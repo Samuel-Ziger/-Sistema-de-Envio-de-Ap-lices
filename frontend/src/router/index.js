@@ -23,7 +23,12 @@ const routes = [
       { path: 'corpos-email', name: 'corposEmail', component: () => import('../views/CorposEmail.vue') },
       { path: 'assinaturas', name: 'assinaturas', component: () => import('../views/Assinaturas.vue') },
       { path: 'capa',       name: 'capa',       component: () => import('../views/Capa.vue') },
-      { path: 'backup',     name: 'backup',     component: () => import('../views/Backup.vue') },
+      {
+        path: 'backup',
+        name: 'backup',
+        component: () => import('../views/Backup.vue'),
+        meta: { requiresBackupAccess: true },
+      },
       { path: 'historico',  name: 'historico',  component: () => import('../views/Historico.vue') },
       { path: 'tutorial',   name: 'tutorial',   component: () => import('../views/Tutorial.vue') },
       { path: 'usuarios',   name: 'usuarios',   component: () => import('../views/Usuarios.vue') },

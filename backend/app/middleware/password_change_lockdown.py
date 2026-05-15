@@ -19,6 +19,7 @@ PASSWORD_CHANGE_MSG = (
 _ALLOWED_PREFIXES = (
     "/api/auth/login",
     "/api/auth/status",
+    "/api/auth/me",
     "/api/auth/trocar-senha",
     "/api/auth/verificar-acesso-backend",
 )

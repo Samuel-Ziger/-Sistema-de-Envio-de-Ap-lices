@@ -13,6 +13,7 @@ const ui = useUiStore()
 const router = useRouter()
 
 const mostrarUsuarios = computed(() => auth.authEnabled)
+const mostrarBackup = computed(() => !auth.authEnabled || auth.podeAcessarBackup)
 const mostrarTour = ref(false)
 
 const linksFixos = [
@@ -95,7 +96,7 @@ onUnmounted(() => {
         <RouterLink class="nav-link" to="/corpos-email">Corpos de E-mail</RouterLink>
         <RouterLink class="nav-link" to="/assinaturas">Assinaturas</RouterLink>
         <RouterLink class="nav-link" to="/capa">Capa</RouterLink>
-        <RouterLink class="nav-link" to="/backup">Backup</RouterLink>
+        <RouterLink v-if="mostrarBackup" class="nav-link" to="/backup">Backup</RouterLink>
         <RouterLink class="nav-link" to="/historico">Histórico</RouterLink>
         <RouterLink v-if="mostrarUsuarios" class="nav-link" to="/usuarios">Usuários</RouterLink>
       </nav>

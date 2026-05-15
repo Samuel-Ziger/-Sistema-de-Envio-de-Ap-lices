@@ -32,6 +32,7 @@ def criar(payload: schemas.UsuarioCreate, db: Session = Depends(get_db), _=Depen
         email=payload.email,
         senha_hash=hash_senha(payload.senha),
         is_admin=payload.is_admin,
+        acesso_backup=payload.acesso_backup or payload.is_admin,
         ativo=payload.ativo,
     )
     db.add(u)
@@ -63,6 +64,8 @@ def atualizar(
 
     for k, v in data.items():
         setattr(u, k, v)
+    if u.is_admin:
+        u.acesso_backup = True
 
     db.commit()
     db.refresh(u)

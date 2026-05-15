@@ -114,12 +114,45 @@ Restart-Service EnvioApolices-Front
 
 ## Usar o front em outra máquina da rede
 
+**Cenário recomendado:** backend e frontend no **mesmo servidor**; os outros PCs só abrem o browser.
+
+| O quê | URL nos outros PCs |
+|-------|-------------------|
+| Interface (Vue) | `http://IP-DO-SERVIDOR:5173` |
+| API (teste) | `http://IP-DO-SERVIDOR:8000/docs` |
+
+**Nunca** use `localhost` no browser de outro PC — `localhost` é sempre a máquina local.
+
+### Erro comum: página abre mas não carrega / login falha
+
+O Vite grava `VITE_API_URL` **no momento do build**. Se o build foi feito com
+`http://localhost:8000`, o browser de outro PC tenta falar com a API **dele**, não do servidor.
+
+**Correção no servidor** (PowerShell como administrador):
+
+```powershell
+cd C:\envio-sistema\installer   # ou a pasta installer do projeto
+.\rebuild-frontend.ps1 -ServerIp 192.168.1.50
+```
+
+Substitua pelo IPv4 real (`ipconfig` no servidor). Depois, nos outros PCs: `http://192.168.1.50:5173`.
+
+Confirme também:
+
+1. Serviços a correr: `Get-Service EnvioApolices-*`
+2. Firewall: portas **8000** e **5173** liberadas (o `install.ps1` cria as regras)
+3. `frontend/.env`: `VITE_BACKEND_ACCESS_KEY` igual a `BACKEND_ACCESS_KEY` no `backend/.env`
+4. Teste a API primeiro: `http://IP:8000/docs` — se isto não abrir, o problema é rede/firewall/serviço API
+
+### Front instalado em cada PC cliente (opcional)
+
 1. Copie a pasta `frontend/` para a máquina cliente
 2. Edite `frontend/.env`:
    ```
    VITE_API_URL=http://IP-DO-SERVIDOR:8000
+   VITE_BACKEND_ACCESS_KEY=<mesma chave do backend>
    ```
-3. `npm install && npm run dev` (ou `npm run build && npm run preview`)
+3. `npm install && npm run build && npm run preview -- --host 0.0.0.0`
 
 ## Desinstalação
 

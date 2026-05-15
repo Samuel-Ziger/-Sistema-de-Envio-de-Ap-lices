@@ -1,6 +1,14 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { api } from '../api'
+import { useAuthStore } from '../stores/auth'
+import BackupAcessoNegado from './BackupAcessoNegado.vue'
+
+const auth = useAuthStore()
+const pronto = ref(false)
+const bloqueado = computed(
+  () => pronto.value && auth.authEnabled && auth.token && !auth.podeAcessarBackup
+)
 
 const caminhoAtual = ref('')
 const parentRel = ref(null)
@@ -102,11 +110,18 @@ async function baixarSelecionados() {
   }
 }
 
-onMounted(() => listar(''))
+onMounted(async () => {
+  if (auth.authEnabled && auth.token) {
+    await auth.carregarUsuario()
+  }
+  pronto.value = true
+  if (!bloqueado.value) listar('')
+})
 </script>
 
 <template>
-  <div>
+  <BackupAcessoNegado v-if="bloqueado" />
+  <div v-else-if="pronto">
     <h2>Backup</h2>
     <p class="text-muted">
       Navegue pelas pastas de backup como em um explorador de arquivos. Baixe um arquivo ou selecione vários

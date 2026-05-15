@@ -22,12 +22,28 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isLogged: (s) => !!s.token || !s.authEnabled,
     needsPasswordChange: (s) => s.authEnabled && !!s.token && s.mustChangePassword,
+    podeAcessarBackup: (s) => {
+      if (!s.authEnabled) return true
+      const u = s.user
+      if (!u) return false
+      return Boolean(u.is_admin || u.acesso_backup)
+    },
   },
   actions: {
     async carregarStatus() {
       const { data } = await api.get('/api/auth/status')
       this.authEnabled = !!data.auth_enabled
       return data
+    },
+    async carregarUsuario() {
+      if (!this.token || !this.authEnabled) return null
+      try {
+        const { data } = await api.get('/api/auth/me')
+        this.user = data
+        return data
+      } catch {
+        return null
+      }
     },
     async login(username, senha) {
       const { data } = await api.post('/api/auth/login', { username, senha })
@@ -53,10 +69,13 @@ export const useAuthStore = defineStore('auth', {
         this.mustChangePassword = false
       }
     },
-    restaurarSessao() {
+    async restaurarSessao() {
       if (this.token) {
         const c = claimsFromToken(this.token)
         this.mustChangePassword = !!c.must_change_password
+        if (this.authEnabled) {
+          await this.carregarUsuario()
+        }
       }
     },
   },

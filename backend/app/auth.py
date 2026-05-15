@@ -54,10 +54,23 @@ def _anon_user() -> models.Usuario:
         email=None,
         senha_hash="",
         is_admin=True,
+        acesso_backup=True,
         ativo=True,
         created_at=datetime.utcnow(),
     )
     return u
+
+
+BACKUP_ACCESS_MSG = (
+    "Acesso à pasta de backup restrito. Contacte o administrador do sistema "
+    "para solicitar permissão."
+)
+
+
+def usuario_tem_acesso_backup(user: models.Usuario) -> bool:
+    if user.is_admin:
+        return True
+    return bool(getattr(user, "acesso_backup", False))
 
 
 def _decodar(token: str) -> dict:
@@ -101,6 +114,20 @@ def require_admin(user: Annotated[models.Usuario, Depends(require_user)]) -> mod
     return user
 
 
+def require_backup_access(
+    user: Annotated[models.Usuario, Depends(require_user)],
+) -> models.Usuario:
+    if settings.auth_enabled and not usuario_tem_acesso_backup(user):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "message": BACKUP_ACCESS_MSG,
+                "code": "backup_access_denied",
+            },
+        )
+    return user
+
+
 def seed_admin(db: Session) -> None:
     """Garante que existe um admin inicial baseado no .env."""
     existe = (
@@ -118,6 +145,7 @@ def seed_admin(db: Session) -> None:
         senha_hash=hash_senha(settings.admin_password),
         must_change_password=True,
         is_admin=True,
+        acesso_backup=True,
         ativo=True,
     )
     db.add(admin)
