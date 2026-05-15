@@ -18,6 +18,7 @@ from ..config import settings
 log = logging.getLogger(__name__)
 
 ENC_PREFIX = "enc2:"
+SOC_PREFIX = "soc2:"
 _PBKDF2_ITERS = 480_000
 
 
@@ -136,6 +137,101 @@ def decrypt_field(stored: str | None) -> str | None:
     layer1 = _decrypt_layer(raw, k2)
     plain = _decrypt_layer(layer1, k1)
     return plain.decode("utf-8")
+
+
+@lru_cache(maxsize=8)
+def _derive_soc_keys(chave_soc: str) -> tuple[bytes, bytes, bytes]:
+    pwd = chave_soc.strip().encode("utf-8")
+    salt = hashlib.sha256(b"terra_fertil_soc_emergency_v1").digest()
+    kdf1 = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt + b"soc1",
+        iterations=_PBKDF2_ITERS,
+    )
+    kdf2 = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt + b"soc2",
+        iterations=_PBKDF2_ITERS,
+    )
+    kdfh = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt + b"sochash",
+        iterations=_PBKDF2_ITERS,
+    )
+    return kdf1.derive(pwd), kdf2.derive(pwd), kdfh.derive(pwd)
+
+
+def soc_key_fingerprint(chave_soc: str) -> str:
+    """Impressão digital da chave SOC (não armazena a chave)."""
+    chave = chave_soc.strip()
+    return hmac.new(
+        settings.secret_key.encode("utf-8"),
+        f"soc:{chave}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def verify_soc_key(chave_soc: str, verifier: str | None) -> bool:
+    if not verifier:
+        return False
+    return secrets.compare_digest(soc_key_fingerprint(chave_soc), verifier)
+
+
+def encrypt_field_soc(plaintext: str | None, chave_soc: str) -> str | None:
+    if plaintext is None:
+        return None
+    text = str(plaintext)
+    if not text:
+        return text
+    if text.startswith(SOC_PREFIX):
+        return text
+    k1, k2, _ = _derive_soc_keys(chave_soc)
+    layer1 = _encrypt_layer(text.encode("utf-8"), k1)
+    layer2 = _encrypt_layer(layer1, k2)
+    return SOC_PREFIX + base64.urlsafe_b64encode(layer2).decode("ascii")
+
+
+def decrypt_field_soc(stored: str | None, chave_soc: str) -> str | None:
+    if stored is None:
+        return None
+    if not stored or not stored.startswith(SOC_PREFIX):
+        return stored
+    k1, k2, _ = _derive_soc_keys(chave_soc)
+    raw = base64.urlsafe_b64decode(stored[len(SOC_PREFIX) :].encode("ascii"))
+    layer1 = _decrypt_layer(raw, k2)
+    plain = _decrypt_layer(layer1, k1)
+    return plain.decode("utf-8")
+
+
+def field_hash_soc(value: str | None, kind: str, chave_soc: str) -> str | None:
+    if not value or not str(value).strip():
+        return None
+    _, _, hkey = _derive_soc_keys(chave_soc)
+    normalized = str(value).strip().lower() if kind == "email" else "".join(
+        c for c in str(value) if c.isdigit()
+    )
+    if not normalized:
+        return None
+    msg = f"soc:{kind}:{normalized}".encode("utf-8")
+    return hmac.new(hkey, msg, hashlib.sha256).hexdigest()
+
+
+def decrypt_field_any(stored: str | None, *, chave_soc: str | None = None) -> str | None:
+    """Decifra enc2, soc2 (com chave) ou devolve texto claro."""
+    if stored is None:
+        return None
+    if not stored:
+        return stored
+    if stored.startswith(SOC_PREFIX):
+        if not chave_soc:
+            raise ValueError("Chave SOC necessária para decifrar dados em modo SOC")
+        return decrypt_field_soc(stored, chave_soc)
+    if stored.startswith(ENC_PREFIX):
+        return decrypt_field(stored)
+    return stored
 
 
 def field_hash(value: str | None, kind: str) -> str | None:

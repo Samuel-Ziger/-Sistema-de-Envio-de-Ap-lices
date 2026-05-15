@@ -6,6 +6,7 @@ const TOUR_KEY = 'tf_tour_v1_concluido'
 export const useUiStore = defineStore('ui', () => {
   const notificacoesNaoLidas = ref(0)
   const ocrDisponivel = ref(false)
+  const socModeActive = ref(false)
 
   function tourConcluido() {
     return localStorage.getItem(TOUR_KEY) === '1'
@@ -22,6 +23,7 @@ export const useUiStore = defineStore('ui', () => {
   return {
     notificacoesNaoLidas,
     ocrDisponivel,
+    socModeActive,
     tourConcluido,
     marcarTourConcluido,
     reiniciarTour,

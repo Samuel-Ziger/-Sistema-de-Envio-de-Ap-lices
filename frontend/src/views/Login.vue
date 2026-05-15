@@ -18,7 +18,11 @@ async function entrar() {
   loading.value = true
   try {
     await auth.login(username.value, senha.value)
-    router.push(route.query.redirect || '/dashboard')
+    if (auth.mustChangePassword) {
+      router.push({ name: 'trocarSenha' })
+    } else {
+      router.push(route.query.redirect || '/dashboard')
+    }
   } catch (e) {
     erro.value = e.response?.data?.detail || 'Falha no login'
   } finally {
@@ -45,10 +49,6 @@ async function entrar() {
       <button class="btn btn-primary" style="margin-top:1.2rem; width:100%;" :disabled="loading">
         {{ loading ? 'Entrando…' : 'Entrar' }}
       </button>
-
-      <p class="text-muted" style="margin-top:1rem; font-size:.8rem;">
-        Caso o login esteja desativado, você é direcionado direto ao painel.
-      </p>
     </form>
   </div>
 </template>

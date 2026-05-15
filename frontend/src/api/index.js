@@ -41,6 +41,13 @@ api.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('access_token')
     }
+    if (err.response?.data?.code === 'password_change_required') {
+      err.passwordChangeRequired = true
+      const path = window.location.pathname
+      if (path !== '/trocar-senha' && path !== '/login') {
+        window.location.href = '/trocar-senha'
+      }
+    }
     if (
       err.response?.status === 403 &&
       String(err.response?.data?.detail || '').toLowerCase().includes('backend')

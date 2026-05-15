@@ -271,7 +271,7 @@ class UsuarioBase(BaseModel):
 
 
 class UsuarioCreate(UsuarioBase):
-    senha: str = Field(min_length=4)
+    senha: str = Field(min_length=8)
 
 
 class UsuarioUpdate(BaseModel):
@@ -284,6 +284,7 @@ class UsuarioUpdate(BaseModel):
 
 class UsuarioOut(UsuarioBase):
     id: int
+    must_change_password: bool = False
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -292,6 +293,19 @@ class UsuarioOut(UsuarioBase):
 class LoginPayload(BaseModel):
     username: str
     senha: str
+
+
+class TrocaSenhaIn(BaseModel):
+    senha_atual: str = Field(min_length=1)
+    senha_nova: str = Field(min_length=8)
+    senha_nova_confirmacao: str = Field(min_length=8)
+
+
+class TrocaSenhaOut(BaseModel):
+    mensagem: str
+    access_token: str
+    token_type: str = "bearer"
+    user: UsuarioOut
 
 
 class TokenOut(BaseModel):
@@ -323,6 +337,34 @@ class StatusOut(BaseModel):
     ocr_disponivel: bool = False
     backend_access_enabled: bool = False
     data_encryption_enabled: bool = False
+    soc_mode_active: bool = False
+    soc_encryption_active: bool = False
+    soc_motivo: str = ""
+    soc_ativado_em: str | None = None
+
+
+class SocStatusOut(BaseModel):
+    soc_mode_active: bool
+    soc_encryption_active: bool
+    soc_motivo: str = ""
+    soc_ativado_em: str | None = None
+
+
+class SocAtivarIn(BaseModel):
+    chave_soc: str = Field(min_length=8)
+    chave_soc_confirmacao: str = Field(min_length=8)
+    motivo: str | None = None
+
+
+class SocDesativarIn(BaseModel):
+    chave_soc: str = Field(min_length=8)
+
+
+class SocAcaoOut(BaseModel):
+    soc_mode_active: bool
+    mensagem: str
+    clientes_recifrados: int | None = None
+    clientes_restaurados: int | None = None
 
 
 class BackendAccessVerifyIn(BaseModel):

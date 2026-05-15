@@ -180,6 +180,13 @@ class RuntimeConfig(Base):
         ForeignKey("assinaturas.id"), nullable=True
     )
 
+    # Modo SOC (resposta a incidente)
+    soc_mode_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    soc_encryption_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    soc_key_verifier: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    soc_motivo: Mapped[str | None] = mapped_column(Text, nullable=True)
+    soc_ativado_em: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
 
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -189,6 +196,7 @@ class Usuario(Base):
     nome: Mapped[str] = mapped_column(String(150), nullable=False)
     email: Mapped[str | None] = mapped_column(String(150), nullable=True)
     senha_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

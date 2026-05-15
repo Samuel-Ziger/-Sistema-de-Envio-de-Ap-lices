@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { api } from '../api'
 import { useUiStore } from '../stores/ui'
 import NotificacoesPainel from '../components/NotificacoesPainel.vue'
+import SocPainel from '../components/SocPainel.vue'
 
 const ui = useUiStore()
 
@@ -42,12 +43,15 @@ async function carregar() {
   erro.value = ''
   msgFrases.value = ''
   try {
-    const [s, e] = await Promise.all([
-      api.get('/api/status'),
-      api.get('/api/envios', { params: { dias: 7 } }),
-    ])
+    const s = await api.get('/api/status')
     status.value = s.data
-    ultimos.value = e.data
+    ui.socModeActive = Boolean(s.data.soc_mode_active)
+    if (s.data.soc_mode_active) {
+      ultimos.value = []
+    } else {
+      const e = await api.get('/api/envios', { params: { dias: 7 } })
+      ultimos.value = e.data
+    }
     ui.notificacoesNaoLidas = s.data.notificacoes_nao_lidas ?? 0
     ui.ocrDisponivel = s.data.ocr_disponivel ?? false
     frasesEmail.value = s.data.email_frases_dashboard ?? ''
@@ -161,7 +165,9 @@ onUnmounted(() => {
 
     <div v-if="erro" class="alert alert-err">{{ erro }}</div>
 
-    <NotificacoesPainel />
+    <SocPainel v-if="status" :status="status" @atualizado="carregar" />
+
+    <NotificacoesPainel v-if="!status?.soc_mode_active" />
 
     <div v-if="status" class="grid-cards mb-4">
       <div class="stat">
@@ -258,7 +264,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="card">
+    <div v-if="status && !status.soc_mode_active" class="card">
       <h3>Últimos envios (7 dias)</h3>
       <table class="table" v-if="ultimos.length">
         <thead>

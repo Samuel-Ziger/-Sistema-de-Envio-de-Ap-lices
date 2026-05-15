@@ -35,6 +35,7 @@ async function carregarStatusOcr() {
     const { data } = await api.get('/api/status')
     ui.ocrDisponivel = data.ocr_disponivel ?? false
     ui.notificacoesNaoLidas = data.notificacoes_nao_lidas ?? 0
+    ui.socModeActive = Boolean(data.soc_mode_active)
   } catch {
   }
 }
@@ -125,6 +126,10 @@ onUnmounted(() => {
     </aside>
 
     <main class="app-main">
+      <div v-if="ui.socModeActive" class="soc-global-banner" role="alert">
+        <strong>MODO SOC ATIVO</strong> — envios e alterações bloqueados. Desative no Dashboard com a chave de emergência.
+      </div>
+
       <header class="app-topbar app-topbar--auth">
         <div>
           <small class="text-muted">
@@ -158,6 +163,15 @@ onUnmounted(() => {
   font-size: 0.7rem;
   font-weight: 700;
   text-align: center;
+}
+.soc-global-banner {
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  background: rgba(197, 48, 48, 0.15);
+  border: 1px solid var(--err);
+  color: var(--err);
+  font-size: 0.9rem;
 }
 .ocr-pill {
   margin-left: 0.5rem;

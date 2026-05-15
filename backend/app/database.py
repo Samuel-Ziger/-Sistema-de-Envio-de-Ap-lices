@@ -52,6 +52,7 @@ def init_db() -> None:
     _migrate_envios_columns()
     _migrate_avulso_para_manual()
     _migrate_clientes_crypto_columns()
+    _migrate_usuarios_columns()
     _seed_runtime_config()
     _import_crypto_events()
     _migrate_clientes_encryption_data()
@@ -127,6 +128,48 @@ def _migrate_runtime_config_columns() -> None:
         if "atalhos_email_json" not in cols:
             conn.execute(
                 text("ALTER TABLE runtime_config ADD COLUMN atalhos_email_json TEXT")
+            )
+        if "soc_mode_active" not in cols:
+            conn.execute(
+                text("ALTER TABLE runtime_config ADD COLUMN soc_mode_active BOOLEAN DEFAULT 0")
+            )
+        if "soc_encryption_active" not in cols:
+            conn.execute(
+                text(
+                    "ALTER TABLE runtime_config ADD COLUMN soc_encryption_active BOOLEAN DEFAULT 0"
+                )
+            )
+        if "soc_key_verifier" not in cols:
+            conn.execute(
+                text("ALTER TABLE runtime_config ADD COLUMN soc_key_verifier VARCHAR(64)")
+            )
+        if "soc_motivo" not in cols:
+            conn.execute(text("ALTER TABLE runtime_config ADD COLUMN soc_motivo TEXT"))
+        if "soc_ativado_em" not in cols:
+            conn.execute(text("ALTER TABLE runtime_config ADD COLUMN soc_ativado_em DATETIME"))
+
+
+def _migrate_usuarios_columns() -> None:
+    """SQLite: troca obrigatória de senha no primeiro acesso."""
+    from .config import settings
+
+    insp = inspect(engine)
+    if "usuarios" not in insp.get_table_names():
+        return
+    cols = {c["name"] for c in insp.get_columns("usuarios")}
+    with engine.begin() as conn:
+        if "must_change_password" not in cols:
+            conn.execute(
+                text(
+                    "ALTER TABLE usuarios ADD COLUMN must_change_password BOOLEAN DEFAULT 0"
+                )
+            )
+            conn.execute(
+                text(
+                    "UPDATE usuarios SET must_change_password = 1 "
+                    "WHERE username = :u AND must_change_password = 0"
+                ),
+                {"u": settings.admin_username},
             )
 
 

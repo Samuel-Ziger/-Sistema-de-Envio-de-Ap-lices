@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from .. import models
 from ..config import settings
-from . import email_service, backup_service, pdf_service
+from . import email_service, backup_service, pdf_service, soc_service
 
 
 log = logging.getLogger(__name__)
@@ -190,6 +190,9 @@ def processar_envio(
     nome_arquivo_original: str | None = None,
     pdf_senha: str | None = None,
 ) -> models.Envio:
+    if soc_service.is_soc_locked(db):
+        raise ValueError(soc_service.SOC_BLOCK_MSG)
+
     caminho_pdf = Path(caminho_pdf)
     temp_desbloqueio: Path | None = None
     temp_mesclado: Path | None = None

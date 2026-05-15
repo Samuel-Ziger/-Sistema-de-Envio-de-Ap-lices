@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     secret_key: str = "troque-essa-chave"
     access_token_expire_minutes: int = 480
     admin_username: str = "admin"
-    admin_password: str = "admin123"
+    admin_password: str = "admin"
 
     # CORS
     cors_origins: str = "*"

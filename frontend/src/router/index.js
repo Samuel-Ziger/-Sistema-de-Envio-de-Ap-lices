@@ -5,6 +5,12 @@ const routes = [
   { path: '/', redirect: '/dashboard' },
   { path: '/login', name: 'login', component: () => import('../views/Login.vue'), meta: { public: true } },
   {
+    path: '/trocar-senha',
+    name: 'trocarSenha',
+    component: () => import('../views/TrocarSenha.vue'),
+    meta: { public: true, passwordChangeOnly: true },
+  },
+  {
     path: '/',
     component: () => import('../components/AppLayout.vue'),
     children: [
@@ -32,16 +38,34 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
-  if (auth.authEnabled === false && !auth._loaded) {
+  if (!auth._loaded) {
     try {
       await auth.carregarStatus()
     } catch { /* backend offline */ }
+    auth.restaurarSessao()
     auth._loaded = true
   }
 
-  if (to.meta.public) return true
+  if (to.meta.passwordChangeOnly) {
+    if (!auth.authEnabled) return { name: 'dashboard' }
+    if (!auth.token) return { name: 'login', query: { redirect: '/trocar-senha' } }
+    if (!auth.mustChangePassword) return { name: 'dashboard' }
+    return true
+  }
+
+  if (to.meta.public) {
+    if (to.name === 'login' && auth.authEnabled && auth.token && auth.mustChangePassword) {
+      return { name: 'trocarSenha' }
+    }
+    if (to.name === 'login' && auth.authEnabled && auth.token && !auth.mustChangePassword) {
+      return { name: 'dashboard' }
+    }
+    return true
+  }
+
   if (!auth.authEnabled) return true
   if (!auth.token) return { name: 'login', query: { redirect: to.fullPath } }
+  if (auth.mustChangePassword) return { name: 'trocarSenha' }
   return true
 })
 

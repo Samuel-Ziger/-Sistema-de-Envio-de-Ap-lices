@@ -88,6 +88,9 @@ onMounted(carregar)
           <div>
             <label>{{ editandoId ? 'Nova senha (deixe vazio p/ manter)' : 'Senha *' }}</label>
             <input v-model="form.senha" type="password" :required="!editandoId" />
+            <p class="text-muted" style="font-size:0.82rem;margin-top:0.35rem">
+              Mín. 8 caracteres, maiúsculas, minúsculas, números e carácter especial.
+            </p>
           </div>
           <div>
             <label>Admin</label>

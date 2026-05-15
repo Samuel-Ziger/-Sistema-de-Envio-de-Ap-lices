@@ -21,13 +21,24 @@ def _norm_digits(val: str | None) -> str:
 def encrypt_cliente_fields(c: models.Cliente) -> None:
     if not crypto.encryption_enabled():
         return
-    plain = {f: getattr(c, f) for f in _SENSITIVE}
+    plain = {}
+    for f in _SENSITIVE:
+        val = getattr(c, f)
+        if val is None:
+            plain[f] = None
+            continue
+        s = str(val)
+        if s.startswith(crypto.ENC_PREFIX) or s.startswith(crypto.SOC_PREFIX):
+            continue
+        plain[f] = val
     c.cpf_hash = crypto.field_hash(plain.get("cpf"), "cpf")
     c.cnpj_hash = crypto.field_hash(plain.get("cnpj"), "cnpj")
     c.email_hash = crypto.field_hash(plain.get("email"), "email")
     for field in _SENSITIVE:
         val = plain.get(field)
-        if val is not None and val != "":
+        if val is None:
+            continue
+        if val != "":
             setattr(c, field, crypto.encrypt_field(str(val)))
 
 
@@ -36,8 +47,12 @@ def decrypt_cliente_fields(c: models.Cliente) -> None:
         return
     for field in _SENSITIVE:
         val = getattr(c, field)
-        if val is not None:
-            setattr(c, field, crypto.decrypt_field(str(val)))
+        if val is None:
+            continue
+        s = str(val)
+        if s.startswith(crypto.SOC_PREFIX):
+            continue
+        setattr(c, field, crypto.decrypt_field(s))
 
 
 def decrypt_many(clientes: Iterable[models.Cliente]) -> list[models.Cliente]:

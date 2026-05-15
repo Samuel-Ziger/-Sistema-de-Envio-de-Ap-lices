@@ -8,6 +8,7 @@ from .. import models, schemas
 from ..auth import require_user
 from ..services import notificacoes_service, ocr_service
 from ..services.data_crypto_service import backend_access_enabled, encryption_enabled
+from ..services import soc_service
 
 
 router = APIRouter(prefix="/api", tags=["status"])
@@ -26,6 +27,7 @@ def _montar_status(db: Session) -> schemas.StatusOut:
     exec_time = "08:00"
     if rc and rc.full_scan_exec_time:
         exec_time = rc.full_scan_exec_time
+    soc = soc_service.soc_status(db)
     return schemas.StatusOut(
         status="ok",
         versao="1.0.0",
@@ -48,6 +50,7 @@ def _montar_status(db: Session) -> schemas.StatusOut:
         ocr_disponivel=ocr_service.ocr_disponivel(),
         backend_access_enabled=backend_access_enabled(),
         data_encryption_enabled=encryption_enabled(),
+        **soc,
     )
 
 

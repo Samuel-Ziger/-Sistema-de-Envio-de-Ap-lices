@@ -116,6 +116,7 @@ def seed_admin(db: Session) -> None:
         nome="Administrador",
         email=None,
         senha_hash=hash_senha(settings.admin_password),
+        must_change_password=True,
         is_admin=True,
         ativo=True,
     )

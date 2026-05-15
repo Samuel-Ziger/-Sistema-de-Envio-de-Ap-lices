@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from .. import models, schemas
 from ..auth import require_admin, hash_senha
+from ..services.password_policy import validate_password_strength
 
 
 router = APIRouter(prefix="/api/usuarios", tags=["usuarios"])
@@ -19,6 +20,11 @@ def listar(db: Session = Depends(get_db), _=Depends(require_admin)):
 def criar(payload: schemas.UsuarioCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
     if db.query(models.Usuario).filter(models.Usuario.username == payload.username).first():
         raise HTTPException(400, "Username já existe")
+
+    try:
+        validate_password_strength(payload.senha)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
     u = models.Usuario(
         username=payload.username,
@@ -47,6 +53,10 @@ def atualizar(
 
     data = payload.model_dump(exclude_unset=True)
     if "senha" in data and data["senha"]:
+        try:
+            validate_password_strength(data["senha"])
+        except ValueError as e:
+            raise HTTPException(400, str(e))
         u.senha_hash = hash_senha(data.pop("senha"))
     else:
         data.pop("senha", None)

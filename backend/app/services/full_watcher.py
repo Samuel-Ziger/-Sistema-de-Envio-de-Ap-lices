@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..database import SessionLocal
 from .. import models
-from . import envio_service, notificacoes_service, pdf_service, cliente_crypto
+from . import envio_service, notificacoes_service, pdf_service, cliente_crypto, soc_service
 
 
 log = logging.getLogger("full_watcher")
@@ -66,7 +66,9 @@ class FullWatcher:
 
             if scan_active and modo_ativo:
                 try:
-                    if self._deve_executar_agora(exec_time, rescan_horas):
+                    if soc_service.is_soc_locked(db):
+                        log.warning("FULL ignorado: modo SOC ativo")
+                    elif self._deve_executar_agora(exec_time, rescan_horas):
                         self._scan_completo(pasta)
                 except Exception as e:
                     log.exception("Erro no watcher FULL: %s", e)

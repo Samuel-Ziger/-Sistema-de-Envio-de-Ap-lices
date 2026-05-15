@@ -11,6 +11,8 @@ from .config import settings
 from .database import init_db, SessionLocal
 from .auth import seed_admin
 from .middleware.backend_access import BackendAccessMiddleware
+from .middleware.soc_lockdown import SocLockdownMiddleware
+from .middleware.password_change_lockdown import PasswordChangeLockdownMiddleware
 from .services.data_crypto_service import validate_security_config
 from .routers import (
     clientes,
@@ -25,6 +27,7 @@ from .routers import (
     capa,
     backup,
     notificacoes,
+    soc,
 )
 from .services.full_watcher import watcher_global
 
@@ -69,6 +72,8 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+app.add_middleware(PasswordChangeLockdownMiddleware)
+app.add_middleware(SocLockdownMiddleware)
 app.add_middleware(BackendAccessMiddleware)
 
 app.include_router(status_router.router)
@@ -83,6 +88,7 @@ app.include_router(capa.router)
 app.include_router(backup.router)
 app.include_router(notificacoes.router)
 app.include_router(envios.router)
+app.include_router(soc.router)
 
 
 @app.get("/", include_in_schema=False)
