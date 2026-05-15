@@ -138,6 +138,21 @@ class Envio(Base):
     cliente: Mapped["Cliente"] = relationship(back_populates="envios")
 
 
+class NotificacaoFull(Base):
+    """Alerta quando o FULL não processa um PDF (painel)."""
+
+    __tablename__ = "notificacoes_full"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    arquivo: Mapped[str] = mapped_column(String(500), nullable=False)
+    motivo: Mapped[str] = mapped_column(Text, nullable=False)
+    layout: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    tipo_codigo: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    pasta: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    lida: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
 class RuntimeConfig(Base):
     """Configuracao em tempo de execucao (uma linha, id=1)."""
 
@@ -148,6 +163,8 @@ class RuntimeConfig(Base):
     full_scan_interval_seconds: Mapped[int] = mapped_column(Integer, default=30)
     full_scan_exec_time: Mapped[str | None] = mapped_column(String(5), nullable=True)
     email_frases_dashboard: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # JSON: lista de atalhos HTML personalizados no editor de corpos de e-mail
+    atalhos_email_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # FULL — parametros do envio em lote
     full_lote_size: Mapped[int] = mapped_column(Integer, default=5)

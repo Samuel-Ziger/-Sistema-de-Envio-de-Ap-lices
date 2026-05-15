@@ -87,6 +87,12 @@ class Settings(BaseSettings):
     # Assinaturas e corpos de e-mail
     assinaturas_folder: str = "./assinaturas"
 
+    # OCR (PDFs só imagem) — requer Tesseract instalado no servidor
+    ocr_enabled: bool = True
+    ocr_max_pages: int = 5
+    ocr_lang: str = "por"
+    tesseract_cmd: str = ""
+
     @property
     def cors_list(self) -> list[str]:
         if self.cors_origins.strip() == "*":

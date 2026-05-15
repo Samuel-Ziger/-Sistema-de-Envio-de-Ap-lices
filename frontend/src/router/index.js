@@ -19,6 +19,7 @@ const routes = [
       { path: 'capa',       name: 'capa',       component: () => import('../views/Capa.vue') },
       { path: 'backup',     name: 'backup',     component: () => import('../views/Backup.vue') },
       { path: 'historico',  name: 'historico',  component: () => import('../views/Historico.vue') },
+      { path: 'tutorial',   name: 'tutorial',   component: () => import('../views/Tutorial.vue') },
       { path: 'usuarios',   name: 'usuarios',   component: () => import('../views/Usuarios.vue') },
     ],
   },

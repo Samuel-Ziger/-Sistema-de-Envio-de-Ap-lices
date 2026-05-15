@@ -114,6 +114,9 @@ def _montar_contexto(
         "tipo_envio": tipo_envio,
         "tipo_codigo": tipo_codigo or "",
         "data_envio": datetime.now().strftime("%d/%m/%Y"),
+        "seguradora": "",
+        "produto": "",
+        "layout_apolice": "",
         # Auto
         "placa": (auto.placa if auto else "") or "",
         "marca": (auto.marca if auto else "") or "",
@@ -185,9 +188,15 @@ def processar_envio(
     corpo_email_id: int | None = None,
     assinatura_id: int | None = None,
     nome_arquivo_original: str | None = None,
+    pdf_senha: str | None = None,
 ) -> models.Envio:
     caminho_pdf = Path(caminho_pdf)
-    pdf_final, nome_final, temp_mesclado = _preparar_pdf_final(caminho_pdf)
+    temp_desbloqueio: Path | None = None
+    temp_mesclado: Path | None = None
+    pdf_uso, temp_desbloqueio = pdf_service.garantir_pdf_desbloqueado(
+        caminho_pdf, senha=pdf_senha
+    )
+    pdf_final, nome_final, temp_mesclado = _preparar_pdf_final(pdf_uso)
     frases_dashboard = _frases_dashboard_email(db)
 
     if not frases_dashboard:
@@ -266,7 +275,129 @@ def processar_envio(
     finally:
         if temp_mesclado is not None:
             temp_mesclado.unlink(missing_ok=True)
+        if temp_desbloqueio is not None:
+            temp_desbloqueio.unlink(missing_ok=True)
         db.commit()
         db.refresh(envio)
 
     return envio
+
+
+def reenviar_envio(db: Session, envio_id: int) -> models.Envio:
+    """Reenvia e-mail de um envio com erro, usando o PDF em backup."""
+    envio = db.get(models.Envio, envio_id)
+    if not envio:
+        raise ValueError("Envio não encontrado")
+    if envio.status != "erro":
+        raise ValueError("Só é possível reenviar envios com status erro")
+
+    cliente = db.get(models.Cliente, envio.cliente_id)
+    if not cliente:
+        raise ValueError("Cliente do envio não encontrado")
+
+    if not envio.caminho_backup:
+        raise ValueError("Envio sem ficheiro de backup — não é possível reenviar")
+
+    pdf = Path(envio.caminho_backup)
+    if not pdf.is_file():
+        raise ValueError(f"Backup não encontrado: {envio.caminho_backup}")
+
+    frases_dashboard = _frases_dashboard_email(db)
+    if not frases_dashboard:
+        raise ValueError("Defina as frases no Dashboard para permitir envios.")
+
+    corpo = _resolver_corpo_email(db, envio.tipo_codigo)
+    assin = None
+    if envio.assinatura_id:
+        assin = db.get(models.Assinatura, envio.assinatura_id)
+    if assin is None:
+        assin = _resolver_assinatura(db, tipo_envio=envio.tipo_envio)
+
+    assin_path: Path | None = None
+    cid: str | None = None
+    if assin and assin.arquivo:
+        p = settings.data_path(settings.assinaturas_folder) / assin.arquivo
+        if p.is_file():
+            assin_path = p
+            cid = email_service.gerar_cid()
+
+    envio.status = "pendente"
+    envio.erro_msg = None
+    db.commit()
+
+    try:
+        ctx = _montar_contexto(
+            cliente=cliente,
+            auto=None,
+            numero_apolice=envio.numero_apolice,
+            tipo_envio=envio.tipo_envio,
+            tipo_codigo=envio.tipo_codigo,
+            frases_dashboard=frases_dashboard,
+        )
+        assunto = envio.assunto_email or email_service.formatar_assunto(
+            envio.numero_apolice, custom=(corpo.assunto if corpo else None)
+        )
+        corpo_html = email_service.renderizar_template(
+            contexto=ctx,
+            template_html=(corpo.html if corpo and corpo.html else None),
+            assinatura_cid=cid,
+        )
+        email_service.enviar_email(
+            destinatario=cliente.email,
+            assunto=assunto,
+            corpo_html=corpo_html,
+            anexos=[pdf],
+            nome_anexo_pdf=envio.nome_arquivo_final or pdf.name,
+            assinatura_path=assin_path,
+            assinatura_cid=cid,
+        )
+        envio.assunto_email = assunto
+        envio.status = "enviado"
+        envio.enviado_em = datetime.utcnow()
+    except Exception as exc:
+        envio.status = "erro"
+        envio.erro_msg = str(exc)[:2000]
+    finally:
+        db.commit()
+        db.refresh(envio)
+
+    return envio
+
+
+def reenviar_envios_com_erro(db: Session, *, dias: int = 30) -> dict:
+    """Tenta reenviar todos os envios com erro nos últimos N dias."""
+    from datetime import timedelta
+
+    limite = datetime.utcnow() - timedelta(days=max(1, dias))
+    envios = (
+        db.query(models.Envio)
+        .filter(models.Envio.status == "erro", models.Envio.criado_em >= limite)
+        .order_by(models.Envio.criado_em.asc())
+        .all()
+    )
+    itens = []
+    sucesso = 0
+    for e in envios:
+        try:
+            atualizado = reenviar_envio(db, e.id)
+            ok = atualizado.status == "enviado"
+            if ok:
+                sucesso += 1
+            itens.append(
+                {
+                    "envio_id": e.id,
+                    "ok": ok,
+                    "status": atualizado.status,
+                    "erro": atualizado.erro_msg if not ok else None,
+                }
+            )
+        except Exception as ex:
+            itens.append(
+                {"envio_id": e.id, "ok": False, "status": "erro", "erro": str(ex)[:500]}
+            )
+    return {
+        "total": len(envios),
+        "sucesso": sucesso,
+        "falha": len(envios) - sucesso,
+        "itens": itens,
+    }

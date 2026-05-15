@@ -142,6 +142,17 @@ class CorpoEmailOut(CorpoEmailBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AtalhoPersonalizado(BaseModel):
+    id: str
+    nome: str = Field(..., min_length=1, max_length=120)
+    html: str = Field(..., min_length=1)
+    descricao: str | None = Field(None, max_length=255)
+
+
+class AtalhosPersonalizadosPatch(BaseModel):
+    atalhos: list[AtalhoPersonalizado]
+
+
 # ========= Assinatura =========
 class AssinaturaBase(BaseModel):
     nome: str
@@ -177,6 +188,8 @@ class AssinaturaOut(AssinaturaBase):
 class EnvioOut(BaseModel):
     id: int
     cliente_id: int
+    cliente_nome: str | None = None
+    cliente_email: str | None = None
     tipo_envio: str
     tipo_codigo: str | None = None
     nome_arquivo_original: str | None = None
@@ -184,11 +197,52 @@ class EnvioOut(BaseModel):
     numero_apolice: str | None = None
     status: str
     erro_msg: str | None = None
+    caminho_backup: str | None = None
     assunto_email: str | None = None
     assinatura_id: int | None = None
     criado_em: datetime
     enviado_em: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
+
+
+class EnvioReenvioItemOut(BaseModel):
+    envio_id: int
+    ok: bool
+    status: str | None = None
+    erro: str | None = None
+
+
+class EnvioReenvioLoteOut(BaseModel):
+    total: int
+    sucesso: int
+    falha: int
+    itens: list[EnvioReenvioItemOut]
+
+
+class ClienteDuplicadoResumo(BaseModel):
+    id: int
+    nome: str
+    email: str
+    cpf: str | None = None
+    cnpj: str | None = None
+    ativo: bool = True
+
+
+class ClienteDuplicadoGrupoOut(BaseModel):
+    tipo: str
+    chave: str
+    clientes: list[ClienteDuplicadoResumo]
+
+
+class ClienteLgpdExclusaoIn(BaseModel):
+    confirmar_nome: str = Field(min_length=1)
+    remover_backups: bool = True
+
+
+class ClienteLgpdExclusaoOut(BaseModel):
+    cliente_nome: str
+    envios_removidos: int
+    ficheiros_backup_removidos: int
 
 
 class EnvioAvulsoPayload(BaseModel):
@@ -265,6 +319,8 @@ class StatusOut(BaseModel):
     email_frases_dashboard: str = ""
     total_clientes: int
     total_envios: int
+    notificacoes_nao_lidas: int = 0
+    ocr_disponivel: bool = False
 
 
 class FullRuntimePatch(BaseModel):
@@ -282,6 +338,36 @@ class FullRuntimePatch(BaseModel):
 
 class EmailFrasesPatch(BaseModel):
     email_frases_dashboard: str = Field(default="", max_length=12000)
+
+
+class NotificacaoFullOut(BaseModel):
+    id: int
+    arquivo: str
+    motivo: str
+    layout: str | None = None
+    tipo_codigo: str | None = None
+    pasta: str | None = None
+    lida: bool
+    criado_em: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PdfAnaliseOut(BaseModel):
+    cpf: str | None = None
+    cnpj: str | None = None
+    numero_apolice: str | None = None
+    layout: str
+    seguradora: str | None = None
+    produto: str | None = None
+    avisos: list[str] = []
+    extracao_automatica: bool = True
+    ocr_usado: bool = False
+    ocr_disponivel: bool = False
+    amostra_texto: str = ""
+    cliente_sugerido_id: int | None = None
+    cliente_sugerido_nome: str | None = None
+    requer_senha: bool = False
+    senha_invalida: bool = False
 
 
 # ========= Capa =========

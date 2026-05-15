@@ -22,6 +22,7 @@ from .routers import (
     assinaturas,
     capa,
     backup,
+    notificacoes,
 )
 from .services.full_watcher import watcher_global
 
@@ -75,6 +76,7 @@ app.include_router(corpos_email.router)
 app.include_router(assinaturas.router)
 app.include_router(capa.router)
 app.include_router(backup.router)
+app.include_router(notificacoes.router)
 app.include_router(envios.router)
 
 

@@ -6,6 +6,7 @@ from ..database import get_db
 from ..config import settings
 from .. import models, schemas
 from ..auth import require_user
+from ..services import notificacoes_service, ocr_service
 
 
 router = APIRouter(prefix="/api", tags=["status"])
@@ -42,6 +43,8 @@ def _montar_status(db: Session) -> schemas.StatusOut:
         email_frases_dashboard=frases,
         total_clientes=db.query(models.Cliente).count(),
         total_envios=db.query(models.Envio).count(),
+        notificacoes_nao_lidas=notificacoes_service.contar_nao_lidas(db),
+        ocr_disponivel=ocr_service.ocr_disponivel(),
     )
 
 

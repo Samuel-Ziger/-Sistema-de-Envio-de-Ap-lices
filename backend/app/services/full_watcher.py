@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..database import SessionLocal
 from .. import models
-from . import envio_service, pdf_service
+from . import envio_service, notificacoes_service, pdf_service
 
 
 log = logging.getLogger("full_watcher")
@@ -173,18 +173,70 @@ class FullWatcher:
             if i + lote < len(pdfs) and intervalo_seg > 0:
                 self._stop.wait(intervalo_seg)
 
-    def _processar_um(self, db: Session, pdf: Path, *, tipo_codigo: str | None) -> None:
+    def _notificar_ignorado(
+        self,
+        db: Session,
+        pdf: Path,
+        *,
+        motivo: str,
+        layout: str | None = None,
+        tipo_codigo: str | None = None,
+    ) -> None:
         try:
-            dados = pdf_service.extrair_dados(pdf)
+            notificacoes_service.registrar(
+                db,
+                arquivo=pdf.name,
+                motivo=motivo,
+                layout=layout,
+                tipo_codigo=tipo_codigo,
+                pasta=str(pdf.parent),
+            )
+        except Exception as e:
+            log.error("FULL: não foi possível registrar notificação: %s", e)
+
+    def _processar_um(self, db: Session, pdf: Path, *, tipo_codigo: str | None) -> None:
+        senha_pdf = pdf_service.ler_senha_arquivo_auxiliar(pdf)
+        try:
+            dados = pdf_service.extrair_dados(
+                pdf,
+                usar_ocr=settings.ocr_enabled,
+                senha=senha_pdf,
+            )
         except Exception as e:
             log.error("FULL: falha extraindo %s: %s", pdf.name, e)
+            self._notificar_ignorado(
+                db, pdf, motivo=f"Erro ao ler PDF: {e}", tipo_codigo=tipo_codigo
+            )
+            return
+
+        if dados.avisos:
+            log.warning(
+                "FULL: %s layout=%s — %s",
+                pdf.name, dados.layout, "; ".join(dados.avisos),
+            )
+        if not dados.extracao_automatica:
+            motivo = "; ".join(dados.avisos) or "Identificação automática indisponível"
+            log.warning(
+                "FULL: %s não permite identificação automática (layout=%s).",
+                pdf.name, dados.layout,
+            )
+            self._notificar_ignorado(
+                db, pdf, motivo=motivo, layout=dados.layout, tipo_codigo=tipo_codigo
+            )
             return
 
         cliente = self._achar_cliente(db, dados)
         if not cliente:
+            motivo = (
+                f"Cliente não encontrado (CPF={dados.cpf or '—'}, CNPJ={dados.cnpj or '—'}). "
+                "Cadastre o cliente com o mesmo documento do PDF."
+            )
             log.warning(
-                "FULL: cliente não identificado para %s (cpf=%s cnpj=%s).",
-                pdf.name, dados.cpf, dados.cnpj,
+                "FULL: cliente não identificado para %s (layout=%s cpf=%s cnpj=%s).",
+                pdf.name, dados.layout, dados.cpf, dados.cnpj,
+            )
+            self._notificar_ignorado(
+                db, pdf, motivo=motivo, layout=dados.layout, tipo_codigo=tipo_codigo
             )
             return
 
@@ -201,9 +253,13 @@ class FullWatcher:
                 auto=auto,
                 numero_apolice=dados.numero_apolice,
                 nome_arquivo_original=pdf.name,
+                pdf_senha=senha_pdf,
             )
         except ValueError as e:
             log.warning("FULL: %s", e)
+            self._notificar_ignorado(
+                db, pdf, motivo=str(e), layout=dados.layout, tipo_codigo=tipo_codigo
+            )
             return
 
         if envio.status == "enviado":
@@ -215,6 +271,13 @@ class FullWatcher:
                 log.error("FULL: não foi possível mover %s: %s", pdf.name, e)
         else:
             log.error("FULL: envio com erro para %s: %s", pdf.name, envio.erro_msg)
+            self._notificar_ignorado(
+                db,
+                pdf,
+                motivo=envio.erro_msg or f"Envio com status {envio.status}",
+                layout=dados.layout,
+                tipo_codigo=tipo_codigo,
+            )
 
     def _achar_cliente(self, db: Session, dados: pdf_service.DadosPDF) -> models.Cliente | None:
         if dados.cpf:

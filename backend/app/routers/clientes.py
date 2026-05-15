@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from .. import models, schemas
 from ..auth import require_user
+from ..services import lgpd_service
 
 
 router = APIRouter(prefix="/api/clientes", tags=["clientes"])
@@ -33,6 +34,12 @@ def listar(
         query = query.filter(models.Cliente.ativo == ativo)
 
     return query.order_by(models.Cliente.nome).all()
+
+
+@router.get("/duplicados", response_model=list[schemas.ClienteDuplicadoGrupoOut])
+def listar_duplicados(db: Session = Depends(get_db), _=Depends(require_user)):
+    """CPF, CNPJ ou e-mail repetido entre cadastros."""
+    return lgpd_service.listar_duplicados(db)
 
 
 @router.get("/{cid}", response_model=schemas.ClienteOut)
@@ -80,3 +87,23 @@ def remover(cid: int, db: Session = Depends(get_db), _=Depends(require_user)):
         raise HTTPException(404, "Cliente não encontrado")
     db.delete(c)
     db.commit()
+
+
+@router.post("/{cid}/exclusao-lgpd", response_model=schemas.ClienteLgpdExclusaoOut)
+def exclusao_lgpd(
+    cid: int,
+    payload: schemas.ClienteLgpdExclusaoIn,
+    db: Session = Depends(get_db),
+    _=Depends(require_user),
+):
+    """Exclusão do titular (LGPD): remove cadastro, histórico e PDFs de backup."""
+    try:
+        resultado = lgpd_service.excluir_cliente_lgpd(
+            db,
+            cid,
+            confirmar_nome=payload.confirmar_nome,
+            remover_backups=payload.remover_backups,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return schemas.ClienteLgpdExclusaoOut(**resultado)

@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import BrandLogo from '../components/BrandLogo.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -29,8 +30,9 @@ async function entrar() {
 <template>
   <div class="login-wrap">
     <form class="login-box" @submit.prevent="entrar">
+      <BrandLogo centered />
       <h2 style="margin-bottom:.4rem;">Entrar no Sistema</h2>
-      <p class="text-muted" style="margin-bottom:1.2rem;">Envio de Apólices — Painel Admin</p>
+      <p class="text-muted" style="margin-bottom:1.2rem;">Painel de envio de apólices</p>
 
       <div v-if="erro" class="alert alert-err">{{ erro }}</div>
 

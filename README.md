@@ -8,7 +8,7 @@ painel administrativo web e modo de envio automático.
 ```
 envio-sistema/
 ├── backend/              FastAPI + SQLite + watcher FULL
-├── frontend/             Vue 3 + Vite (tema terra)
+├── frontend/             Vue 3 + Vite (identidade Terra Fértil — verde)
 ├── installer/            Instalador PowerShell p/ Windows Server
 └── README.md
 ```
@@ -137,6 +137,11 @@ rede apontando para a API.
 | DELETE | `/api/clientes/{id}`         | Remover                                  |
 | POST   | `/api/envios/avulso`         | Upload + envio imediato (multipart)      |
 | GET    | `/api/envios`                | Histórico (filtros: tipo, status, dias)  |
+| GET    | `/api/envios/export.csv`     | Exportar histórico em CSV                  |
+| POST   | `/api/envios/reenviar-erros` | Reenviar em lote envios com erro           |
+| POST   | `/api/envios/{id}/reenviar`  | Reenviar um envio com erro (usa backup)    |
+| GET    | `/api/clientes/duplicados`   | Grupos CPF/CNPJ/e-mail duplicados          |
+| POST   | `/api/clientes/{id}/exclusao-lgpd` | Exclusão LGPD (cadastro + backups) |
 | CRUD   | `/api/usuarios`              | Gestão de usuários (admin)               |
 
 Documentação interativa: `/docs` (Swagger) e `/redoc`.

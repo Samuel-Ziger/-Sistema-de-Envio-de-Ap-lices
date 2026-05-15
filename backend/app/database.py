@@ -89,6 +89,10 @@ def _migrate_runtime_config_columns() -> None:
             conn.execute(
                 text("ALTER TABLE runtime_config ADD COLUMN full_assinatura_id INTEGER")
             )
+        if "atalhos_email_json" not in cols:
+            conn.execute(
+                text("ALTER TABLE runtime_config ADD COLUMN atalhos_email_json TEXT")
+            )
 
 
 def _migrate_envios_columns() -> None:

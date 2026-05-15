@@ -31,8 +31,8 @@ TEMPLATE_PADRAO = """
     <p>Segue em anexo sua apólice{% if numero_apolice %} de número
        <strong>{{ numero_apolice }}</strong>{% endif %}.</p>
     {% if frases_dashboard %}
-    <div style="margin:1em 0;padding:.85em 1em;background:#f9f6f3;border-left:3px solid #8D6E63;
-                font-size:0.95em;line-height:1.45;color:#3E2723;white-space:pre-wrap;">{{ frases_dashboard }}</div>
+    <div style="margin:1em 0;padding:.85em 1em;background:#f7faf9;border-left:3px solid #00B94E;
+                font-size:0.95em;line-height:1.45;color:#003C35;white-space:pre-wrap;">{{ frases_dashboard }}</div>
     {% endif %}
     <p>Em caso de dúvidas, responda este e-mail.</p>
     <p>Atenciosamente,<br/>{{ from_name }}</p>
@@ -54,7 +54,11 @@ PLACEHOLDERS_DISPONIVEIS = [
     # Apólice / envio
     {"chave": "numero_apolice", "label": "Nº da apólice", "grupo": "Apólice"},
     {"chave": "tipo_envio", "label": "Tipo de envio", "grupo": "Apólice"},
+    {"chave": "tipo_codigo", "label": "Código do tipo (auto, moto…)", "grupo": "Apólice"},
     {"chave": "data_envio", "label": "Data do envio", "grupo": "Apólice"},
+    {"chave": "seguradora", "label": "Seguradora", "grupo": "Apólice"},
+    {"chave": "produto", "label": "Produto (auto, moto, casco…)", "grupo": "Apólice"},
+    {"chave": "layout_apolice", "label": "Layout detectado no PDF", "grupo": "Apólice"},
     # Auto
     {"chave": "placa", "label": "Placa do veículo", "grupo": "Auto"},
     {"chave": "marca", "label": "Marca", "grupo": "Auto"},
@@ -63,6 +67,108 @@ PLACEHOLDERS_DISPONIVEIS = [
     # Outros
     {"chave": "frases_dashboard", "label": "Frases do dashboard", "grupo": "Outros"},
     {"chave": "from_name", "label": "Remetente (nome)", "grupo": "Outros"},
+]
+
+_FRASE_BOX = (
+    '<motion-div style="margin:1em 0;padding:.85em 1em;background:#f7faf9;'
+    'border-left:3px solid #00B94E;color:#003C35;white-space:pre-wrap;">{{ frases_dashboard }}</motion-div>'
+).replace("motion-div", "div")
+
+# Blocos HTML sugeridos por modelo de apólice (pasta Modelos/)
+ATALHOS_MODELOS = [
+    {
+        "id": "tokio_auto",
+        "label": "Tokio Marine — Auto",
+        "layout": "tokio_marine",
+        "produto": "auto",
+        "tipo_codigo_sugerido": "auto",
+        "full_automatico": True,
+        "descricao": "CPF e nº da apólice extraídos automaticamente no modo FULL.",
+        "html": (
+            "<p>Prezado(a) <strong>{{ nome }}</strong>,</p>\n"
+            "<p>Segue em anexo sua apólice Tokio Marine <strong>Auto</strong>"
+            "{% if numero_apolice %} nº <strong>{{ numero_apolice }}</strong>{% endif %}.</p>\n"
+            "{% if frases_dashboard %}" + _FRASE_BOX + "{% endif %}\n"
+            "<p>Em caso de dúvidas, responda este e-mail.</p>\n"
+            "<p>Atenciosamente,<br/>{{ from_name }}</p>"
+        ),
+    },
+    {
+        "id": "tokio_moto",
+        "label": "Tokio Marine — Moto",
+        "layout": "tokio_marine",
+        "produto": "moto",
+        "tipo_codigo_sugerido": "moto",
+        "full_automatico": True,
+        "descricao": "Mesmo layout Tokio; pasta FULL sugerida: moto/.",
+        "html": (
+            "<p>Prezado(a) <strong>{{ nome }}</strong>,</p>\n"
+            "<p>Segue em anexo sua apólice Tokio Marine <strong>Moto</strong>"
+            "{% if numero_apolice %} nº <strong>{{ numero_apolice }}</strong>{% endif %}.</p>\n"
+            "{% if frases_dashboard %}" + _FRASE_BOX + "{% endif %}\n"
+            "<p>Atenciosamente,<br/>{{ from_name }}</p>"
+        ),
+    },
+    {
+        "id": "yelum_casco",
+        "label": "Yelum — Auto Casco (Ramo 31)",
+        "layout": "yelum_casco",
+        "produto": "auto_casco",
+        "tipo_codigo_sugerido": "auto_casco",
+        "full_automatico": True,
+        "descricao": "Apólice no formato 31.09.2026.0907318; CPF na ficha do segurado.",
+        "html": (
+            "<p>Prezado(a) <strong>{{ nome }}</strong>,</p>\n"
+            "<p>Segue sua apólice Yelum (Automóvel Casco)"
+            "{% if numero_apolice %} — <strong>{{ numero_apolice }}</strong>{% endif %}.</p>\n"
+            "{% if placa %}<p>Veículo: placa <strong>{{ placa }}</strong>"
+            "{% if marca %} — {{ marca }} {{ modelo }}{% endif %}.</p>{% endif %}\n"
+            "{% if frases_dashboard %}" + _FRASE_BOX + "{% endif %}\n"
+            "<p>Atenciosamente,<br/>{{ from_name }}</p>"
+        ),
+    },
+    {
+        "id": "porto_criptografado",
+        "label": "Porto / SulAmérica — PDF protegido",
+        "layout": "porto_sulamerica_criptografado",
+        "produto": None,
+        "tipo_codigo_sugerido": None,
+        "full_automatico": False,
+        "descricao": "Informe a senha do PDF no envio manual ou use ficheiro .pdf.senha no FULL.",
+        "html": (
+            "<p>Prezado(a) <strong>{{ nome }}</strong>,</p>\n"
+            "<p>Segue em anexo sua apólice de seguro"
+            "{% if numero_apolice %} nº <strong>{{ numero_apolice }}</strong>{% endif %}.</p>\n"
+            "{% if frases_dashboard %}" + _FRASE_BOX + "{% endif %}\n"
+            "<p>Atenciosamente,<br/>{{ from_name }}</p>"
+        ),
+    },
+    {
+        "id": "sem_texto",
+        "label": "PDF só imagem / impressão",
+        "layout": "sem_texto",
+        "produto": None,
+        "tipo_codigo_sugerido": None,
+        "full_automatico": False,
+        "descricao": "PDF sem texto selecionável; cadastre cliente e apólice manualmente.",
+        "html": (
+            "<p>Prezado(a) <strong>{{ nome }}</strong>,</p>\n"
+            "<p>Segue em anexo o documento da sua apólice"
+            "{% if numero_apolice %} (<strong>{{ numero_apolice }}</strong>){% endif %}.</p>\n"
+            "{% if frases_dashboard %}" + _FRASE_BOX + "{% endif %}\n"
+            "<p>Atenciosamente,<br/>{{ from_name }}</p>"
+        ),
+    },
+    {
+        "id": "generico",
+        "label": "Genérico — qualquer seguradora",
+        "layout": None,
+        "produto": None,
+        "tipo_codigo_sugerido": None,
+        "full_automatico": None,
+        "descricao": "Modelo padrão com variáveis do cliente e da apólice.",
+        "html": TEMPLATE_PADRAO.strip(),
+    },
 ]
 
 

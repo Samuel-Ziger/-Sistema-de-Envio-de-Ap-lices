@@ -3,10 +3,17 @@ import { ref, onMounted, reactive } from 'vue'
 import { api } from '../api'
 
 const clientes = ref([])
+const duplicados = ref([])
 const busca = ref('')
 const carregando = ref(false)
+const carregandoDup = ref(false)
 const erro = ref('')
 const ok = ref('')
+
+const lgpdCliente = ref(null)
+const lgpdConfirmarNome = ref('')
+const lgpdRemoverBackups = ref(true)
+const lgpdProcessando = ref(false)
 
 const form = reactive(vazio())
 const editandoId = ref(null)
@@ -57,21 +64,71 @@ async function salvar() {
 }
 
 async function remover(c) {
-  if (!confirm(`Remover cliente "${c.nome}"?`)) return
+  if (!confirm(`Remover cliente "${c.nome}"? (histórico na base; backups não são apagados)`)) return
   try {
     await api.delete(`/api/clientes/${c.id}`)
     await carregar()
+    await carregarDuplicados()
   } catch (e) {
     erro.value = e.response?.data?.detail || 'Erro ao remover'
   }
 }
 
-onMounted(carregar)
+async function carregarDuplicados() {
+  carregandoDup.value = true
+  try {
+    const { data } = await api.get('/api/clientes/duplicados')
+    duplicados.value = data
+  } catch {
+    duplicados.value = []
+  } finally {
+    carregandoDup.value = false
+  }
+}
+
+function abrirLgpd(c) {
+  lgpdCliente.value = c
+  lgpdConfirmarNome.value = ''
+  lgpdRemoverBackups.value = true
+}
+
+function fecharLgpd() {
+  lgpdCliente.value = null
+}
+
+async function executarLgpd() {
+  if (!lgpdCliente.value) return
+  lgpdProcessando.value = true
+  erro.value = ''
+  ok.value = ''
+  try {
+    const { data } = await api.post(`/api/clientes/${lgpdCliente.value.id}/exclusao-lgpd`, {
+      confirmar_nome: lgpdConfirmarNome.value,
+      remover_backups: lgpdRemoverBackups.value,
+    })
+    ok.value = `LGPD: "${data.cliente_nome}" removido — ${data.envios_removidos} envio(s), ${data.ficheiros_backup_removidos} backup(s)`
+    fecharLgpd()
+    await carregar()
+    await carregarDuplicados()
+  } catch (e) {
+    erro.value = e.response?.data?.detail || 'Exclusão LGPD falhou'
+  } finally {
+    lgpdProcessando.value = false
+  }
+}
+
+onMounted(async () => {
+  await carregar()
+  await carregarDuplicados()
+})
 </script>
 
 <template>
   <div>
     <h2>Clientes</h2>
+    <p class="text-muted">
+      Mantenha CPF e e-mail corretos para o modo FULL. Use «Exclusão LGPD» para apagar dados do titular.
+    </p>
 
     <div v-if="erro" class="alert alert-err">{{ erro }}</div>
     <div v-if="ok"   class="alert alert-ok">{{ ok }}</div>
@@ -123,6 +180,25 @@ onMounted(carregar)
       </form>
     </div>
 
+    <div v-if="duplicados.length" class="card alert-warn">
+      <h3>Possíveis duplicados ({{ duplicados.length }} grupo(s))</h3>
+      <p class="text-muted" style="font-size: 0.9rem">
+        Cadastros com o mesmo CPF, CNPJ ou e-mail. Unifique num único registo antes de confiar no FULL.
+      </p>
+      <div v-for="(g, i) in duplicados" :key="i" class="duplicados-grupo">
+        <strong>{{ g.tipo.toUpperCase() }}:</strong> <code>{{ g.chave }}</code>
+        <ul class="m-0 mt-2">
+          <li v-for="c in g.clientes" :key="c.id">
+            #{{ c.id }} — {{ c.nome }} — {{ c.email }}
+            <button class="btn btn-ghost btn-sm" @click="editar(c)">Editar</button>
+          </li>
+        </ul>
+      </div>
+      <button class="btn btn-ghost btn-sm mt-2" :disabled="carregandoDup" @click="carregarDuplicados">
+        Atualizar duplicados
+      </button>
+    </div>
+
     <div class="card">
       <div class="flex items-center gap-2 mb-2">
         <h3 style="margin:0;">Lista</h3>
@@ -147,12 +223,38 @@ onMounted(carregar)
             <td>{{ c.ativo ? 'Sim' : 'Não' }}</td>
             <td style="text-align:right; white-space:nowrap;">
               <button class="btn btn-ghost btn-sm" @click="editar(c)">Editar</button>
+              <button class="btn btn-ghost btn-sm" @click="abrirLgpd(c)" style="margin-left:.3rem">
+                LGPD
+              </button>
               <button class="btn btn-danger btn-sm" @click="remover(c)" style="margin-left:.3rem">Remover</button>
             </td>
           </tr>
         </tbody>
       </table>
       <p v-else-if="!carregando" class="text-muted">Nenhum cliente cadastrado.</p>
+    </div>
+
+    <div v-if="lgpdCliente" class="modal-backdrop" @click.self="fecharLgpd">
+      <div class="modal-card" role="dialog" aria-labelledby="lgpd-titulo">
+        <h3 id="lgpd-titulo">Exclusão LGPD</h3>
+        <p class="text-muted" style="font-size: 0.9rem">
+          Remove o cadastro, todo o histórico de envios e, se marcado, os PDFs em
+          <code>backend/backup/</code>. Ação irreversível.
+        </p>
+        <p><strong>Cliente:</strong> {{ lgpdCliente.nome }}</p>
+        <label>Digite o nome completo para confirmar *</label>
+        <input v-model="lgpdConfirmarNome" :placeholder="lgpdCliente.nome" autocomplete="off" />
+        <label class="mt-2" style="display: flex; align-items: center; gap: 0.4rem; font-weight: 500">
+          <input v-model="lgpdRemoverBackups" type="checkbox" />
+          Apagar ficheiros de backup associados
+        </label>
+        <div class="flex gap-2 mt-4">
+          <button class="btn btn-danger" :disabled="lgpdProcessando" @click="executarLgpd">
+            {{ lgpdProcessando ? 'A apagar…' : 'Confirmar exclusão' }}
+          </button>
+          <button type="button" class="btn btn-ghost" @click="fecharLgpd">Cancelar</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

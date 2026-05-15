@@ -1,6 +1,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { api } from '../api'
+import { useUiStore } from '../stores/ui'
+import NotificacoesPainel from '../components/NotificacoesPainel.vue'
+
+const ui = useUiStore()
 
 const dataRelogio = ref('')
 const horaRelogio = ref('')
@@ -44,6 +48,8 @@ async function carregar() {
     ])
     status.value = s.data
     ultimos.value = e.data
+    ui.notificacoesNaoLidas = s.data.notificacoes_nao_lidas ?? 0
+    ui.ocrDisponivel = s.data.ocr_disponivel ?? false
     frasesEmail.value = s.data.email_frases_dashboard ?? ''
     editandoFrase.value = !Boolean((s.data.email_frases_dashboard ?? '').trim())
     horaExecucaoFull.value = s.data.full_scan_exec_time ?? '08:00'
@@ -154,6 +160,8 @@ onUnmounted(() => {
     </div>
 
     <div v-if="erro" class="alert alert-err">{{ erro }}</div>
+
+    <NotificacoesPainel />
 
     <div v-if="status" class="grid-cards mb-4">
       <div class="stat">

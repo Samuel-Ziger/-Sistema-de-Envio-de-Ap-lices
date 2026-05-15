@@ -65,6 +65,53 @@ Ver status:
 Get-Service EnvioApolices-*
 ```
 
+## Operação recomendada no servidor
+
+### Pastas que devem ter backup externo
+
+Tudo abaixo é relativo à pasta `backend/` da instalação:
+
+| Pasta / ficheiro | Função |
+|------------------|--------|
+| `data/envio.db` | Base de dados (clientes, envios) |
+| `backup/` | Cópia de cada apólice enviada |
+| `entrada/` | PDFs à espera do modo FULL |
+| `processados/` | PDFs já tratados pelo FULL |
+| `capas/capa.pdf` | Capa junta a cada envio |
+
+Configure caminhos absolutos no `.env` se preferir outro disco (ex.: `D:\envio\backup`).
+
+### Tesseract OCR (PDFs só imagem)
+
+1. Instale: [Tesseract para Windows](https://github.com/UB-Mannheim/tesseract/wiki)
+2. No `backend/.env`:
+   ```
+   OCR_ENABLED=true
+   TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
+   ```
+3. `Restart-Service EnvioApolices-API`
+4. No painel, o menu mostra **OCR ativo** quando o motor está disponível.
+
+### PDF protegido por senha (modo FULL)
+
+Na mesma pasta do PDF em `entrada/<tipo>/`, crie um ficheiro com a senha numa linha:
+
+- `documento.pdf.senha`, ou
+- `documento.senha.txt`
+
+Exemplo: `entrada/auto/55207_apolice.pdf` + `entrada/auto/55207_apolice.pdf.senha`
+
+A senha **não** é guardada na base de dados.
+
+### Após alterar `.env` ou dependências Python
+
+```powershell
+cd C:\envio-sistema\backend
+.\.venv\Scripts\pip install -r requirements.txt
+Restart-Service EnvioApolices-API
+Restart-Service EnvioApolices-Front
+```
+
 ## Usar o front em outra máquina da rede
 
 1. Copie a pasta `frontend/` para a máquina cliente

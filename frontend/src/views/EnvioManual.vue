@@ -1,6 +1,50 @@
 <script setup>
 import { ref, onMounted, reactive, computed, watch } from 'vue'
+import { useRoute, RouterLink } from 'vue-router'
 import { api } from '../api'
+import { useUiStore } from '../stores/ui'
+
+const ui = useUiStore()
+
+const route = useRoute()
+
+const MODELOS_ENVIO = {
+  tokio_auto: {
+    label: 'Tokio Marine — Auto',
+    tipo: 'auto',
+    dica: 'CPF e nº da apólice são extraídos do PDF quando possível.',
+    extrair: true,
+  },
+  tokio_moto: {
+    label: 'Tokio Marine — Moto',
+    tipo: 'moto',
+    dica: 'Mesmo layout Tokio; associe ao tipo moto no FULL.',
+    extrair: true,
+  },
+  yelum_casco: {
+    label: 'Yelum — Auto Casco',
+    tipo: 'auto_casco',
+    dica: 'Apólice no formato 31.09.2026.0907318.',
+    extrair: true,
+  },
+  porto_criptografado: {
+    label: 'PDF protegido (Porto/SulAmérica)',
+    tipo: '',
+    dica: 'Informe a senha do PDF abaixo (a que o segurado recebe por e-mail ou SMS).',
+    extrair: true,
+  },
+  sem_texto: {
+    label: 'PDF só imagem',
+    tipo: '',
+    dica: 'Cadastre cliente e apólice manualmente.',
+    extrair: false,
+  },
+}
+
+const modeloAtivo = computed(() => {
+  const id = route.query.modelo
+  return id && MODELOS_ENVIO[id] ? { id, ...MODELOS_ENVIO[id] } : null
+})
 
 const clientes = ref([])
 const autos = ref([])
@@ -25,6 +69,35 @@ const erro = ref('')
 const ok = ref('')
 const ultimoEnvio = ref(null)
 const demo = ref(null)
+const analise = ref(null)
+const analisando = ref(false)
+const pdfPreviewUrl = ref(null)
+const usarOcr = ref(true)
+const pdfSenha = ref('')
+const mostrarConfirmacao = ref(false)
+const confirmouEmail = ref(false)
+
+const emailDestino = computed(() => {
+  if (criarNovo.value) return (novoCliente.email || '').trim()
+  const c = clientes.value.find((x) => x.id === clienteId.value)
+  return c?.email?.trim() || ''
+})
+
+const nomeDestino = computed(() => {
+  if (criarNovo.value) return (novoCliente.nome || '').trim()
+  const c = clientes.value.find((x) => x.id === clienteId.value)
+  return c?.nome?.trim() || ''
+})
+
+const mostrarCampoSenha = computed(
+  () =>
+    Boolean(
+      analise.value?.requer_senha ||
+        analise.value?.senha_invalida ||
+        analise.value?.layout === 'porto_sulamerica_criptografado' ||
+        modeloAtivo.value?.id === 'porto_criptografado'
+    )
+)
 
 const autosCliente = computed(() =>
   clienteId.value ? autos.value.filter((a) => a.cliente_id === clienteId.value) : []
@@ -49,7 +122,45 @@ watch(clienteId, () => {
   autoId.value = null
 })
 
-function onArquivo(e) { arquivo.value = e.target.files[0] || null }
+async function analisarArquivo() {
+  if (!arquivo.value) {
+    analise.value = null
+    return
+  }
+  analisando.value = true
+  analise.value = null
+  const fd = new FormData()
+  fd.append('arquivo', arquivo.value)
+  fd.append('usar_ocr', usarOcr.value ? 'true' : 'false')
+  if (pdfSenha.value) fd.append('pdf_senha', pdfSenha.value)
+  try {
+    const { data } = await api.post('/api/envios/analisar-pdf', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    analise.value = data
+    if (data.numero_apolice && !numeroApolice.value) numeroApolice.value = data.numero_apolice
+    if (data.cliente_sugerido_id && !criarNovo.value && !clienteId.value) {
+      clienteId.value = data.cliente_sugerido_id
+    }
+  } catch (e) {
+    erro.value = e.response?.data?.detail || 'Não foi possível analisar o PDF'
+  } finally {
+    analisando.value = false
+  }
+}
+
+function onArquivo(e) {
+  if (pdfPreviewUrl.value) URL.revokeObjectURL(pdfPreviewUrl.value)
+  arquivo.value = e.target.files[0] || null
+  pdfSenha.value = ''
+  if (arquivo.value) {
+    pdfPreviewUrl.value = URL.createObjectURL(arquivo.value)
+    analisarArquivo()
+  } else {
+    pdfPreviewUrl.value = null
+    analise.value = null
+  }
+}
 function onBoleto(e)  { boleto.value  = e.target.files[0] || null }
 
 function montarFormData() {
@@ -67,6 +178,7 @@ function montarFormData() {
   if (autoId.value)        fd.append('auto_id', autoId.value)
   if (corpoEmailId.value)  fd.append('corpo_email_id', corpoEmailId.value)
   if (assinaturaId.value)  fd.append('assinatura_id', assinaturaId.value)
+  if (pdfSenha.value)      fd.append('pdf_senha', pdfSenha.value)
   return fd
 }
 
@@ -77,6 +189,21 @@ function validar({ exigirArquivo }) {
     erro.value = 'Nome e e-mail do novo cliente são obrigatórios'; return false
   }
   return true
+}
+
+function pedirConfirmacao() {
+  erro.value = ''
+  if (!validar({ exigirArquivo: true })) return
+  if (!emailDestino.value) {
+    erro.value = 'Informe o e-mail do destinatário'
+    return
+  }
+  confirmouEmail.value = false
+  mostrarConfirmacao.value = true
+}
+
+function fecharConfirmacao() {
+  mostrarConfirmacao.value = false
 }
 
 async function enviar() {
@@ -95,7 +222,16 @@ async function enviar() {
     erro.value = e.response?.data?.detail || 'Falha no envio'
   } finally {
     enviando.value = false
+    mostrarConfirmacao.value = false
   }
+}
+
+async function confirmarEEnviar() {
+  if (!confirmouEmail.value) {
+    erro.value = 'Marque a confirmação do e-mail antes de enviar'
+    return
+  }
+  await enviar()
 }
 
 async function demonstrar() {
@@ -114,18 +250,38 @@ async function demonstrar() {
   }
 }
 
-onMounted(carregarOpcoes)
+function aplicarModeloDaUrl() {
+  const m = modeloAtivo.value
+  if (!m) return
+  if (m.tipo) tipoCodigo.value = m.tipo
+  extrairDados.value = m.extrair
+}
+
+watch(() => route.query.modelo, aplicarModeloDaUrl)
+
+onMounted(async () => {
+  await carregarOpcoes()
+  aplicarModeloDaUrl()
+  if (modeloAtivo.value?.id === 'sem_texto') usarOcr.value = true
+})
 </script>
 
 <template>
   <div>
     <h2>Envio Manual</h2>
-    <p class="text-muted">Selecione um cliente existente (ou cadastre na hora), envie o PDF e o sistema dispara o e-mail imediatamente.</p>
+    <p class="text-muted">
+      Selecione um cliente existente (ou cadastre na hora), envie o PDF e o sistema dispara o e-mail imediatamente.
+      <RouterLink to="/tutorial">Tutorial</RouterLink>
+    </p>
+
+    <div v-if="modeloAtivo" class="alert alert-warn">
+      <strong>Modelo: {{ modeloAtivo.label }}</strong> — {{ modeloAtivo.dica }}
+    </div>
 
     <div v-if="erro" class="alert alert-err">{{ erro }}</div>
     <div v-if="ok"   class="alert alert-ok">{{ ok }}</div>
 
-    <form @submit.prevent="enviar">
+    <form @submit.prevent="pedirConfirmacao">
       <div class="card">
         <h3>Cliente</h3>
         <div class="flex gap-4 mb-2">
@@ -162,6 +318,26 @@ onMounted(carregarOpcoes)
           <div>
             <label>PDF da apólice *</label>
             <input type="file" accept="application/pdf" @change="onArquivo" />
+            <label v-if="ui.ocrDisponivel" class="ocr-toggle mt-2" style="display:flex;align-items:center;gap:.4rem;font-weight:500">
+              <input v-model="usarOcr" type="checkbox" @change="arquivo && analisarArquivo()" />
+              Usar OCR se o PDF for só imagem
+            </label>
+          </div>
+          <div v-if="mostrarCampoSenha" class="senha-pdf-box">
+            <label>Senha do PDF *</label>
+            <input
+              v-model="pdfSenha"
+              type="password"
+              autocomplete="off"
+              placeholder="Senha enviada pelo segurado/seguradora"
+              @keyup.enter="analisarArquivo"
+            />
+            <button type="button" class="btn btn-ghost btn-sm mt-2" :disabled="analisando" @click="analisarArquivo">
+              Aplicar senha e analisar
+            </button>
+            <p class="text-muted m-0 mt-2" style="font-size:0.85rem">
+              Modo FULL: crie <code>nome-do-arquivo.pdf.senha</code> na mesma pasta, com a senha numa linha.
+            </p>
           </div>
           <div>
             <label>Boleto (opcional)</label>
@@ -213,6 +389,34 @@ onMounted(carregarOpcoes)
           </div>
         </div>
 
+        <div v-if="pdfPreviewUrl || analisando || analise" class="pdf-preview-panel mt-4">
+          <h4 class="m-0 mb-2">Pré-visualização do PDF</h4>
+          <p v-if="analisando" class="text-muted">A analisar layout e dados…</p>
+          <div v-if="pdfPreviewUrl" class="pdf-preview-row">
+            <iframe :src="pdfPreviewUrl" class="pdf-iframe" title="Pré-visualização" />
+            <div v-if="analise" class="pdf-analise-dados">
+              <p><strong>Layout:</strong> {{ analise.layout }}</p>
+              <p v-if="analise.seguradora"><strong>Seguradora:</strong> {{ analise.seguradora }}</p>
+              <p v-if="analise.produto"><strong>Produto:</strong> {{ analise.produto }}</p>
+              <p><strong>CPF:</strong> {{ analise.cpf || '—' }}</p>
+              <p><strong>Apólice:</strong> {{ analise.numero_apolice || '—' }}</p>
+              <p v-if="analise.cliente_sugerido_nome">
+                <strong>Cliente sugerido:</strong> {{ analise.cliente_sugerido_nome }}
+              </p>
+              <p v-if="analise.ocr_usado" class="badge enviado">OCR utilizado</p>
+              <p v-if="analise.requer_senha" class="badge pendente">Senha necessária</p>
+              <p v-if="analise.senha_invalida" class="badge erro">Senha incorreta</p>
+              <ul v-if="analise.avisos?.length" class="analise-avisos">
+                <li v-for="(av, i) in analise.avisos" :key="i">{{ av }}</li>
+              </ul>
+              <details v-if="analise.amostra_texto" class="mt-2">
+                <summary class="text-muted">Amostra do texto extraído</summary>
+                <pre class="amostra-texto">{{ analise.amostra_texto }}</pre>
+              </details>
+            </div>
+          </div>
+        </div>
+
         <p class="text-muted mt-2" style="font-size: 0.9rem">
           O envio manual usa obrigatoriamente as frases configuradas no Dashboard.
         </p>
@@ -227,6 +431,30 @@ onMounted(carregarOpcoes)
         </button>
       </div>
     </form>
+
+    <div v-if="mostrarConfirmacao" class="modal-backdrop" @click.self="fecharConfirmacao">
+      <div class="modal-card" role="dialog" aria-labelledby="confirmar-envio-titulo">
+        <h3 id="confirmar-envio-titulo">Confirmar envio</h3>
+        <p>Verifique o destinatário antes de enviar a apólice:</p>
+        <p><strong>Cliente:</strong> {{ nomeDestino || '—' }}</p>
+        <p class="confirm-email">{{ emailDestino }}</p>
+        <label style="display: flex; align-items: flex-start; gap: 0.5rem; font-weight: 500; margin-top: 1rem">
+          <input v-model="confirmouEmail" type="checkbox" />
+          Confirmo que o e-mail acima está correto
+        </label>
+        <div class="flex gap-2 mt-4">
+          <button
+            type="button"
+            class="btn btn-accent"
+            :disabled="enviando || !confirmouEmail"
+            @click="confirmarEEnviar"
+          >
+            {{ enviando ? 'Enviando…' : 'Enviar para este e-mail' }}
+          </button>
+          <button type="button" class="btn btn-ghost" @click="fecharConfirmacao">Voltar</button>
+        </div>
+      </div>
+    </div>
 
     <div v-if="demo" class="card mt-4">
       <h3>Demonstração do e-mail</h3>

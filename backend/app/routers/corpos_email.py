@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from .. import models, schemas
 from ..auth import require_user
-from ..services import email_service
+from ..services import email_service, atalhos_service
 
 
 router = APIRouter(prefix="/api/corpos-email", tags=["corpos-email"])
@@ -27,6 +27,28 @@ def listar(
 def placeholders():
     """Lista de placeholders disponíveis para o editor."""
     return {"placeholders": email_service.PLACEHOLDERS_DISPONIVEIS}
+
+
+@router.get("/atalhos")
+def listar_atalhos(db: Session = Depends(get_db), _=Depends(require_user)):
+    """Placeholders, blocos por modelo de apólice e atalhos personalizados."""
+    return {
+        "placeholders": email_service.PLACEHOLDERS_DISPONIVEIS,
+        "modelos": email_service.ATALHOS_MODELOS,
+        "personalizados": atalhos_service.listar_personalizados(db),
+    }
+
+
+@router.put("/atalhos-personalizados")
+def salvar_atalhos_personalizados(
+    payload: schemas.AtalhosPersonalizadosPatch,
+    db: Session = Depends(get_db),
+    _=Depends(require_user),
+):
+    """Substitui a lista de atalhos HTML criados pela equipe."""
+    itens = [a.model_dump() for a in payload.atalhos]
+    atalhos_service.salvar_personalizados(db, itens)
+    return {"personalizados": itens}
 
 
 @router.get("/{cid}", response_model=schemas.CorpoEmailOut)
