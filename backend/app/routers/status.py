@@ -21,9 +21,6 @@ def _montar_status(db: Session) -> schemas.StatusOut:
     interval = rc.full_scan_interval_seconds if rc else settings.full_scan_interval_seconds
     interval = max(10, min(3600, int(interval)))
     effective = bool(env_on and scan_active and (rc.full_modo_ativo if rc else True))
-    frases = ""
-    if rc and rc.email_frases_dashboard:
-        frases = rc.email_frases_dashboard.strip()
     exec_time = "08:00"
     if rc and rc.full_scan_exec_time:
         exec_time = rc.full_scan_exec_time
@@ -43,7 +40,6 @@ def _montar_status(db: Session) -> schemas.StatusOut:
         full_rescan_horas=rc.full_rescan_horas if rc else settings.full_rescan_horas,
         full_modo_ativo=rc.full_modo_ativo if rc else True,
         full_assinatura_id=rc.full_assinatura_id if rc else None,
-        email_frases_dashboard=frases,
         total_clientes=db.query(models.Cliente).count(),
         total_envios=db.query(models.Envio).count(),
         notificacoes_nao_lidas=notificacoes_service.contar_nao_lidas(db),
@@ -104,30 +100,6 @@ def atualizar_full_runtime(
                 raise HTTPException(400, "Assinatura inexistente")
             rc.full_assinatura_id = body.full_assinatura_id
 
-    db.commit()
-    db.refresh(rc)
-    return _montar_status(db)
-
-
-@router.patch("/settings/email-frases", response_model=schemas.StatusOut)
-def atualizar_email_frases(
-    body: schemas.EmailFrasesPatch,
-    db: Session = Depends(get_db),
-    _=Depends(require_user),
-):
-    rc = db.get(models.RuntimeConfig, 1)
-    if rc is None:
-        rc = models.RuntimeConfig(
-            id=1,
-            full_scan_active=True,
-            full_scan_interval_seconds=settings.full_scan_interval_seconds,
-            full_scan_exec_time="08:00",
-            email_frases_dashboard=body.email_frases_dashboard.strip() or None,
-        )
-        db.add(rc)
-    else:
-        v = body.email_frases_dashboard.strip()
-        rc.email_frases_dashboard = v or None
     db.commit()
     db.refresh(rc)
     return _montar_status(db)

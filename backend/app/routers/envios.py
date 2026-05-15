@@ -16,7 +16,7 @@ from ..config import settings
 from ..database import get_db
 from .. import models, schemas
 from ..auth import require_user
-from ..services import envio_service, ocr_service, pdf_service, cliente_crypto
+from ..services import envio_service, ocr_service, pdf_service, cliente_crypto, file_provenance
 from ..services.pdf_service import PdfRequerSenhaError, PdfSenhaInvalidaError
 
 
@@ -106,6 +106,8 @@ def exportar_csv(
             "cliente_email",
             "numero_apolice",
             "arquivo",
+            "enviado_por",
+            "arquivo_colocado_por",
             "assunto",
             "erro",
         ]
@@ -124,6 +126,8 @@ def exportar_csv(
                 e.cliente.email if e.cliente else "",
                 e.numero_apolice or "",
                 e.nome_arquivo_original or "",
+                e.enviado_por or "",
+                e.arquivo_colocado_por or "",
                 e.assunto_email or "",
                 (e.erro_msg or "").replace("\n", " "),
             ]
@@ -263,6 +267,7 @@ def _resolver_cliente(
 async def _processar_request_manual(
     *,
     db: Session,
+    usuario: models.Usuario,
     arquivo: UploadFile,
     boleto: UploadFile | None,
     cliente_id: int | None,
@@ -300,6 +305,7 @@ async def _processar_request_manual(
             auto = None
 
     try:
+        rotulo = file_provenance.rotulo_usuario(usuario.nome, usuario.username)
         envio = envio_service.processar_envio(
             db,
             cliente=cliente,
@@ -313,6 +319,8 @@ async def _processar_request_manual(
             assinatura_id=assinatura_id,
             nome_arquivo_original=arquivo.filename,
             pdf_senha=pdf_senha,
+            usuario_envio=usuario if usuario.id else None,
+            arquivo_colocado_por=rotulo,
         )
     except PdfRequerSenhaError as e:
         raise HTTPException(400, str(e))
@@ -346,10 +354,11 @@ async def envio_manual(
     assinatura_id: int | None = Form(None),
     pdf_senha: str | None = Form(None),
     db: Session = Depends(get_db),
-    _=Depends(require_user),
+    usuario: models.Usuario = Depends(require_user),
 ):
     return await _processar_request_manual(
         db=db,
+        usuario=usuario,
         arquivo=arquivo,
         boleto=boleto,
         cliente_id=cliente_id,
@@ -379,11 +388,12 @@ async def envio_avulso_legado(
     corpo_email_id: int | None = Form(None),
     assinatura_id: int | None = Form(None),
     db: Session = Depends(get_db),
-    _=Depends(require_user),
+    usuario: models.Usuario = Depends(require_user),
 ):
     """Alias legado da rota /manual — mantido para compat com clientes antigos."""
     return await _processar_request_manual(
         db=db,
+        usuario=usuario,
         arquivo=arquivo,
         boleto=None,
         cliente_id=cliente_id,

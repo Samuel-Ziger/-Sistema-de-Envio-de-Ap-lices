@@ -418,7 +418,8 @@ onMounted(async () => {
         </div>
 
         <p class="text-muted mt-2" style="font-size: 0.9rem">
-          O envio manual usa obrigatoriamente as frases configuradas no Dashboard.
+          O texto do e-mail vem do corpo associado ao tipo de envio em
+          <RouterLink to="/corpos-email">Corpos de E-mail</RouterLink>.
         </p>
       </div>
 

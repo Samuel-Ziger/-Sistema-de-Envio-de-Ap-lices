@@ -135,10 +135,16 @@ class Envio(Base):
     assinatura_id: Mapped[int | None] = mapped_column(
         ForeignKey("assinaturas.id"), nullable=True
     )
+    usuario_envio_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id"), nullable=True, index=True
+    )
+    enviado_por: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    arquivo_colocado_por: Mapped[str | None] = mapped_column(String(150), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     enviado_em: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     cliente: Mapped["Cliente"] = relationship(back_populates="envios")
+    usuario_envio: Mapped["Usuario | None"] = relationship()
 
 
 class NotificacaoFull(Base):

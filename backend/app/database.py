@@ -184,6 +184,14 @@ def _migrate_envios_columns() -> None:
             conn.execute(text("ALTER TABLE envios ADD COLUMN tipo_codigo VARCHAR(60)"))
         if "assinatura_id" not in cols:
             conn.execute(text("ALTER TABLE envios ADD COLUMN assinatura_id INTEGER"))
+        if "usuario_envio_id" not in cols:
+            conn.execute(text("ALTER TABLE envios ADD COLUMN usuario_envio_id INTEGER"))
+        if "enviado_por" not in cols:
+            conn.execute(text("ALTER TABLE envios ADD COLUMN enviado_por VARCHAR(150)"))
+        if "arquivo_colocado_por" not in cols:
+            conn.execute(
+                text("ALTER TABLE envios ADD COLUMN arquivo_colocado_por VARCHAR(150)")
+            )
 
 
 def _migrate_avulso_para_manual() -> None:

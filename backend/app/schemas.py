@@ -200,6 +200,9 @@ class EnvioOut(BaseModel):
     caminho_backup: str | None = None
     assunto_email: str | None = None
     assinatura_id: int | None = None
+    usuario_envio_id: int | None = None
+    enviado_por: str | None = None
+    arquivo_colocado_por: str | None = None
     criado_em: datetime
     enviado_em: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
@@ -330,7 +333,6 @@ class StatusOut(BaseModel):
     full_rescan_horas: int = 1
     full_modo_ativo: bool = True
     full_assinatura_id: int | None = None
-    email_frases_dashboard: str = ""
     total_clientes: int
     total_envios: int
     notificacoes_nao_lidas: int = 0
@@ -382,10 +384,6 @@ class FullRuntimePatch(BaseModel):
     full_rescan_horas: int | None = Field(None, ge=0, le=72)
     full_modo_ativo: bool | None = None
     full_assinatura_id: int | None = None
-
-
-class EmailFrasesPatch(BaseModel):
-    email_frases_dashboard: str = Field(default="", max_length=12000)
 
 
 class NotificacaoFullOut(BaseModel):

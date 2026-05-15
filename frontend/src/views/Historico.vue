@@ -154,6 +154,8 @@ onMounted(carregar)
             <th>Arquivo</th>
             <th>Apólice</th>
             <th>Status</th>
+            <th>Envio por</th>
+            <th>Arquivo por</th>
             <th>Criado</th>
             <th></th>
           </tr>
@@ -172,6 +174,8 @@ onMounted(carregar)
                 {{ e.erro_msg }}
               </div>
             </td>
+            <td style="font-size: 0.85rem">{{ e.enviado_por || '—' }}</td>
+            <td style="font-size: 0.85rem">{{ e.arquivo_colocado_por || '—' }}</td>
             <td>{{ new Date(e.criado_em).toLocaleString() }}</td>
             <td>
               <button

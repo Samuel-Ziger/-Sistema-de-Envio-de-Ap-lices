@@ -30,10 +30,6 @@ TEMPLATE_PADRAO = """
     <p>Prezado(a) <strong>{{ nome }}</strong>,</p>
     <p>Segue em anexo sua apólice{% if numero_apolice %} de número
        <strong>{{ numero_apolice }}</strong>{% endif %}.</p>
-    {% if frases_dashboard %}
-    <div style="margin:1em 0;padding:.85em 1em;background:#f7faf9;border-left:3px solid #00B94E;
-                font-size:0.95em;line-height:1.45;color:#003C35;white-space:pre-wrap;">{{ frases_dashboard }}</div>
-    {% endif %}
     <p>Em caso de dúvidas, responda este e-mail.</p>
     <p>Atenciosamente,<br/>{{ from_name }}</p>
     {% if assinatura_cid %}
@@ -65,14 +61,8 @@ PLACEHOLDERS_DISPONIVEIS = [
     {"chave": "modelo", "label": "Modelo", "grupo": "Auto"},
     {"chave": "ano", "label": "Ano", "grupo": "Auto"},
     # Outros
-    {"chave": "frases_dashboard", "label": "Frases do dashboard", "grupo": "Outros"},
     {"chave": "from_name", "label": "Remetente (nome)", "grupo": "Outros"},
 ]
-
-_FRASE_BOX = (
-    '<motion-div style="margin:1em 0;padding:.85em 1em;background:#f7faf9;'
-    'border-left:3px solid #00B94E;color:#003C35;white-space:pre-wrap;">{{ frases_dashboard }}</motion-div>'
-).replace("motion-div", "div")
 
 # Blocos HTML sugeridos por modelo de apólice (pasta Modelos/)
 ATALHOS_MODELOS = [
@@ -88,7 +78,6 @@ ATALHOS_MODELOS = [
             "<p>Prezado(a) <strong>{{ nome }}</strong>,</p>\n"
             "<p>Segue em anexo sua apólice Tokio Marine <strong>Auto</strong>"
             "{% if numero_apolice %} nº <strong>{{ numero_apolice }}</strong>{% endif %}.</p>\n"
-            "{% if frases_dashboard %}" + _FRASE_BOX + "{% endif %}\n"
             "<p>Em caso de dúvidas, responda este e-mail.</p>\n"
             "<p>Atenciosamente,<br/>{{ from_name }}</p>"
         ),
@@ -105,7 +94,6 @@ ATALHOS_MODELOS = [
             "<p>Prezado(a) <strong>{{ nome }}</strong>,</p>\n"
             "<p>Segue em anexo sua apólice Tokio Marine <strong>Moto</strong>"
             "{% if numero_apolice %} nº <strong>{{ numero_apolice }}</strong>{% endif %}.</p>\n"
-            "{% if frases_dashboard %}" + _FRASE_BOX + "{% endif %}\n"
             "<p>Atenciosamente,<br/>{{ from_name }}</p>"
         ),
     },
@@ -123,7 +111,6 @@ ATALHOS_MODELOS = [
             "{% if numero_apolice %} — <strong>{{ numero_apolice }}</strong>{% endif %}.</p>\n"
             "{% if placa %}<p>Veículo: placa <strong>{{ placa }}</strong>"
             "{% if marca %} — {{ marca }} {{ modelo }}{% endif %}.</p>{% endif %}\n"
-            "{% if frases_dashboard %}" + _FRASE_BOX + "{% endif %}\n"
             "<p>Atenciosamente,<br/>{{ from_name }}</p>"
         ),
     },
@@ -139,7 +126,6 @@ ATALHOS_MODELOS = [
             "<p>Prezado(a) <strong>{{ nome }}</strong>,</p>\n"
             "<p>Segue em anexo sua apólice de seguro"
             "{% if numero_apolice %} nº <strong>{{ numero_apolice }}</strong>{% endif %}.</p>\n"
-            "{% if frases_dashboard %}" + _FRASE_BOX + "{% endif %}\n"
             "<p>Atenciosamente,<br/>{{ from_name }}</p>"
         ),
     },
@@ -155,7 +141,6 @@ ATALHOS_MODELOS = [
             "<p>Prezado(a) <strong>{{ nome }}</strong>,</p>\n"
             "<p>Segue em anexo o documento da sua apólice"
             "{% if numero_apolice %} (<strong>{{ numero_apolice }}</strong>){% endif %}.</p>\n"
-            "{% if frases_dashboard %}" + _FRASE_BOX + "{% endif %}\n"
             "<p>Atenciosamente,<br/>{{ from_name }}</p>"
         ),
     },
@@ -178,7 +163,6 @@ def renderizar_template(
     cliente_nome: str | None = None,
     numero_apolice: str | None = None,
     mensagem: str | None = None,
-    frases_dashboard: str | None = None,
     template_html: str | None = None,
     template_path: str | None = None,
     assinatura_cid: str | None = None,
@@ -201,13 +185,11 @@ def renderizar_template(
     if contexto:
         ctx.update(dict(contexto))
 
-    # Compatibilidade legado: cliente_nome/numero_apolice/frases_dashboard
+    # Compatibilidade legado: cliente_nome/numero_apolice
     if cliente_nome and "nome" not in ctx:
         ctx["nome"] = cliente_nome
     if numero_apolice is not None and "numero_apolice" not in ctx:
         ctx["numero_apolice"] = numero_apolice
-    if frases_dashboard is not None:
-        ctx.setdefault("frases_dashboard", (frases_dashboard or "").strip() or None)
 
     ctx.setdefault("from_name", settings.smtp_from_name)
     ctx.setdefault("mensagem", mensagem)

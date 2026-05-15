@@ -20,18 +20,10 @@ from sqlalchemy.orm import Session
 
 from .. import models
 from ..config import settings
-from . import email_service, backup_service, pdf_service, soc_service
+from . import email_service, backup_service, pdf_service, soc_service, file_provenance
 
 
 log = logging.getLogger(__name__)
-
-
-def _frases_dashboard_email(db: Session) -> str | None:
-    rc = db.get(models.RuntimeConfig, 1)
-    if not rc or not rc.email_frases_dashboard:
-        return None
-    t = rc.email_frases_dashboard.strip()
-    return t or None
 
 
 def _resolver_caminho_capa() -> Path | None:
@@ -100,7 +92,6 @@ def _montar_contexto(
     numero_apolice: str | None,
     tipo_envio: str,
     tipo_codigo: str | None,
-    frases_dashboard: str | None,
 ) -> dict[str, Any]:
     return {
         # Cliente
@@ -123,7 +114,6 @@ def _montar_contexto(
         "modelo": (auto.modelo if auto else "") or "",
         "ano": (auto.ano if auto else "") or "",
         # Outros
-        "frases_dashboard": (frases_dashboard or "").strip(),
         "from_name": settings.smtp_from_name,
     }
 
@@ -140,7 +130,6 @@ def renderizar_demonstracao(
     corpo_email_id: int | None = None,
 ) -> dict[str, Any]:
     """Gera dict com os dados que apareceriam no e-mail (assunto + html), sem enviar."""
-    frases = _frases_dashboard_email(db)
     corpo = None
     if corpo_email_id:
         corpo = db.get(models.CorpoEmail, corpo_email_id)
@@ -156,7 +145,6 @@ def renderizar_demonstracao(
         numero_apolice=numero_apolice,
         tipo_envio=tipo_envio,
         tipo_codigo=tipo_codigo,
-        frases_dashboard=frases,
     )
 
     assunto = email_service.formatar_assunto(
@@ -189,6 +177,8 @@ def processar_envio(
     assinatura_id: int | None = None,
     nome_arquivo_original: str | None = None,
     pdf_senha: str | None = None,
+    usuario_envio: models.Usuario | None = None,
+    arquivo_colocado_por: str | None = None,
 ) -> models.Envio:
     if soc_service.is_soc_locked(db):
         raise ValueError(soc_service.SOC_BLOCK_MSG)
@@ -200,11 +190,6 @@ def processar_envio(
         caminho_pdf, senha=pdf_senha
     )
     pdf_final, nome_final, temp_mesclado = _preparar_pdf_final(pdf_uso)
-    frases_dashboard = _frases_dashboard_email(db)
-
-    if not frases_dashboard:
-        raise ValueError("Defina as frases no Dashboard para permitir envios.")
-
     # Corpo de e-mail: override > tipo > template padrão
     corpo: models.CorpoEmail | None = None
     if corpo_email_id:
@@ -221,6 +206,18 @@ def processar_envio(
             assin_path = p
             cid = email_service.gerar_cid()
 
+    if usuario_envio and getattr(usuario_envio, "id", None) not in (None, 0):
+        enviado_por = file_provenance.rotulo_usuario(
+            usuario_envio.nome, usuario_envio.username
+        )
+        uid = usuario_envio.id
+    elif (tipo_envio or "").upper() == "FULL":
+        enviado_por = "FULL (automático)"
+        uid = None
+    else:
+        enviado_por = None
+        uid = None
+
     envio = models.Envio(
         cliente_id=cliente.id,
         tipo_envio=tipo_envio,
@@ -230,6 +227,9 @@ def processar_envio(
         numero_apolice=numero_apolice,
         status="pendente",
         assinatura_id=assin.id if assin else None,
+        usuario_envio_id=uid if uid else None,
+        enviado_por=enviado_por,
+        arquivo_colocado_por=(arquivo_colocado_por or "").strip() or None,
     )
     db.add(envio)
     db.commit()
@@ -249,7 +249,6 @@ def processar_envio(
             numero_apolice=numero_apolice,
             tipo_envio=tipo_envio,
             tipo_codigo=tipo_codigo,
-            frases_dashboard=frases_dashboard,
         )
         assunto = assunto_customizado or email_service.formatar_assunto(
             numero_apolice, custom=(corpo.assunto if corpo else None)
@@ -305,10 +304,6 @@ def reenviar_envio(db: Session, envio_id: int) -> models.Envio:
     if not pdf.is_file():
         raise ValueError(f"Backup não encontrado: {envio.caminho_backup}")
 
-    frases_dashboard = _frases_dashboard_email(db)
-    if not frases_dashboard:
-        raise ValueError("Defina as frases no Dashboard para permitir envios.")
-
     corpo = _resolver_corpo_email(db, envio.tipo_codigo)
     assin = None
     if envio.assinatura_id:
@@ -335,7 +330,6 @@ def reenviar_envio(db: Session, envio_id: int) -> models.Envio:
             numero_apolice=envio.numero_apolice,
             tipo_envio=envio.tipo_envio,
             tipo_codigo=envio.tipo_codigo,
-            frases_dashboard=frases_dashboard,
         )
         assunto = envio.assunto_email or email_service.formatar_assunto(
             envio.numero_apolice, custom=(corpo.assunto if corpo else None)

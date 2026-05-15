@@ -43,7 +43,7 @@ const passos = [
   {
     titulo: '1. Configure o básico',
     itens: [
-      'Defina a frase obrigatória no Dashboard (usada em todos os e-mails).',
+      'Configure os corpos de e-mail e associe cada um ao tipo de envio correspondente.',
       'Envie a capa Terra Fértil em Capa (vira capa.pdf junto com cada apólice).',
       'Cadastre assinaturas em Assinaturas e vincule ao FULL se necessário.',
     ],
@@ -137,15 +137,33 @@ const passos = [
     </section>
 
     <section class="card">
-      <h3>Atalhos no editor de e-mail</h3>
+      <h3>Atalhos e HTML nos corpos de e-mail</h3>
       <p class="text-muted">
         Em <RouterLink to="/corpos-email">Corpos de E-mail</RouterLink>, ative
-        <strong>Atalhos visíveis</strong> para ver:
+        <strong>Atalhos visíveis</strong>. Use o tour guiado («Rever tour» no menu) para a mini-aula completa.
       </p>
+      <h4 class="mt-3" style="font-size: 1rem">Três abas de atalhos</h4>
       <ul class="tutorial-lista">
-        <li><strong>Variáveis</strong> — clique para inserir <code v-pre>{{ nome }}</code>, CPF, placa, etc.</li>
-        <li><strong>Por modelo</strong> — blocos prontos para Tokio Auto/Moto, Yelum e envio manual.</li>
-        <li><strong>Meus atalhos</strong> — crie trechos HTML reutilizáveis para toda a equipe.</li>
+        <li>
+          <strong>Variáveis</strong> — clique para inserir
+          <code v-pre>{{ nome }}</code>, CPF, placa, apólice, etc. O sistema substitui no envio.
+        </li>
+        <li>
+          <strong>Por modelo</strong> — «Inserir bloco» cola HTML pronto (Tokio, Yelum, manual). Edite depois.
+        </li>
+        <li>
+          <strong>Meus atalhos</strong> — nome + HTML, «Guardar atalho»; fica na base para toda a equipa.
+        </li>
+      </ul>
+      <h4 class="mt-3" style="font-size: 1rem">HTML básico (resumo)</h4>
+      <ul class="tutorial-lista">
+        <li><code>&lt;p&gt;</code> parágrafo · <code>&lt;strong&gt;</code> negrito · <code>&lt;br/&gt;</code> quebra de linha</li>
+        <li>
+          Condicional:
+          <code v-pre>{% if numero_apolice %}…{% endif %}</code> — não apague essas marcas.
+        </li>
+        <li>Não cole do Word; não use <code>&lt;html&gt;</code> / <code>&lt;body&gt;</code> no editor.</li>
+        <li>Associe o corpo ao tipo em <RouterLink to="/tipos-envio">Tipos de Envio</RouterLink>.</li>
       </ul>
     </section>
 
@@ -205,6 +223,10 @@ const passos = [
         <li>
           <strong>PDF com senha no FULL</strong> — ficheiro auxiliar
           <code>nome.pdf.senha</code> na mesma pasta do PDF (uma linha com a senha).
+        </li>
+        <li>
+          <strong>Auditoria no histórico</strong> — envio manual regista o utilizador logado; no FULL,
+          opcional <code>nome.pdf.usuario</code> (uma linha com o nome) ou o dono do ficheiro no Windows.
         </li>
         <li>
           O indicador <strong>OCR ativo</strong> no menu confirma que o Tesseract está acessível.
@@ -268,7 +290,7 @@ const passos = [
       <ul class="tutorial-lista mt-2">
         <li>PDF com senha no FULL — use ficheiro <code>.senha</code> ou envio manual.</li>
         <li>Cliente não encontrado no FULL — confira se o CPF no cadastro é igual ao do PDF.</li>
-        <li>E-mail não sai — verifique frase no Dashboard e SMTP no servidor (ver instalador).</li>
+        <li>E-mail não sai — verifique corpo de e-mail no tipo de envio e SMTP no servidor (ver instalador).</li>
       </ul>
     </section>
   </div>

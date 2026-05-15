@@ -14,7 +14,14 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..database import SessionLocal
 from .. import models
-from . import envio_service, notificacoes_service, pdf_service, cliente_crypto, soc_service
+from . import (
+    envio_service,
+    notificacoes_service,
+    pdf_service,
+    cliente_crypto,
+    soc_service,
+    file_provenance,
+)
 
 
 log = logging.getLogger("full_watcher")
@@ -245,6 +252,8 @@ class FullWatcher:
         # Tenta achar auto pelo CPF/CNPJ ou pela placa no texto
         auto = self._achar_auto(db, cliente, dados)
 
+        arquivo_por = file_provenance.detectar_arquivo_colocado_por(pdf)
+
         try:
             envio = envio_service.processar_envio(
                 db,
@@ -256,6 +265,7 @@ class FullWatcher:
                 numero_apolice=dados.numero_apolice,
                 nome_arquivo_original=pdf.name,
                 pdf_senha=senha_pdf,
+                arquivo_colocado_por=arquivo_por,
             )
         except ValueError as e:
             log.warning("FULL: %s", e)

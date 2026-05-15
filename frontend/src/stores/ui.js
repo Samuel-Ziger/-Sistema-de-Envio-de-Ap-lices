@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-const TOUR_KEY = 'tf_tour_v1_concluido'
+const TOUR_KEY = 'tf_tour_v2_concluido'
 
 export const useUiStore = defineStore('ui', () => {
   const notificacoesNaoLidas = ref(0)
