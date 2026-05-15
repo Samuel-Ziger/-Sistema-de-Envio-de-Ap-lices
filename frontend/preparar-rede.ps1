@@ -16,6 +16,8 @@
 [CmdletBinding()]
 param(
     [string]$ServerIp = "",
+    [string]$HostName = "",
+    [switch]$UrlSemPorta,
     [int]$ApiPort = 8000,
     [int]$FrontPort = 5173,
     [switch]$SkipBuild,
@@ -104,9 +106,15 @@ Write-Host "  Preparar acesso na rede - Terra Fertil" -ForegroundColor White
 Write-Host ""
 
 $hostIp = if ($ServerIp.Trim()) { $ServerIp.Trim() } else { Get-LocalLanIPv4 }
-$apiUrl = "http://${hostIp}:$ApiPort"
+$dnsName = $HostName.Trim().ToLower()
+if ($dnsName) {
+    $apiUrl = if ($UrlSemPorta) { "http://${dnsName}" } else { "http://${dnsName}:$ApiPort" }
+} else {
+    $apiUrl = "http://${hostIp}:$ApiPort"
+}
 
 Write-Step "IP do servidor na rede: $hostIp"
+if ($dnsName) { Write-Step "Nome interno: $dnsName" }
 if ($hostIp -eq '127.0.0.1') {
     Write-Warn "Nao foi possivel detectar IP da LAN. Use: .\preparar-rede.ps1 -ServerIp 192.168.x.x"
 }
@@ -149,8 +157,13 @@ if (-not $SkipBuild) {
     } finally { Pop-Location }
 }
 
-$urlFront = "http://${hostIp}:$FrontPort"
-$urlApi   = "http://${hostIp}:$ApiPort/docs"
+if ($dnsName) {
+    $urlFront = if ($UrlSemPorta) { "http://${dnsName}" } else { "http://${dnsName}:$FrontPort" }
+    $urlApi   = if ($UrlSemPorta) { "http://${dnsName}/docs" } else { "http://${dnsName}:$ApiPort/docs" }
+} else {
+    $urlFront = "http://${hostIp}:$FrontPort"
+    $urlApi   = "http://${hostIp}:$ApiPort/docs"
+}
 
 Write-Host ""
 Write-Host "========================================================" -ForegroundColor Green

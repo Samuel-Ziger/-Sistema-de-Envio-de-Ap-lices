@@ -12,6 +12,10 @@ node_modules/
 dist/
 .vite/
 
+# Intranet (gerado por preparar-intranet.ps1)
+tools/caddy/
+frontend/registrar-hostname-nos-pcs.bat
+
 # Env
 .env
 backend/.env

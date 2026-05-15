@@ -31,7 +31,12 @@ const routes = [
       },
       { path: 'historico',  name: 'historico',  component: () => import('../views/Historico.vue') },
       { path: 'tutorial',   name: 'tutorial',   component: () => import('../views/Tutorial.vue') },
-      { path: 'usuarios',   name: 'usuarios',   component: () => import('../views/Usuarios.vue') },
+      {
+        path: 'usuarios',
+        name: 'usuarios',
+        component: () => import('../views/Usuarios.vue'),
+        meta: { requiresAdmin: true },
+      },
     ],
   },
 ]
@@ -71,6 +76,17 @@ router.beforeEach(async (to) => {
   if (!auth.authEnabled) return true
   if (!auth.token) return { name: 'login', query: { redirect: to.fullPath } }
   if (auth.mustChangePassword) return { name: 'trocarSenha' }
+
+  if (to.meta.requiresAdmin) {
+    if (!auth.user) await auth.carregarUsuario()
+    if (!auth.user?.is_admin) return { name: 'dashboard' }
+  }
+
+  if (to.meta.requiresBackupAccess) {
+    if (!auth.user) await auth.carregarUsuario()
+    if (!auth.podeAcessarBackup) return { name: 'dashboard' }
+  }
+
   return true
 })
 

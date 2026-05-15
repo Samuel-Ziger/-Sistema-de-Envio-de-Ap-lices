@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
@@ -12,7 +12,7 @@ const auth = useAuthStore()
 const ui = useUiStore()
 const router = useRouter()
 
-const mostrarUsuarios = computed(() => auth.authEnabled)
+const mostrarUsuarios = computed(() => auth.authEnabled && Boolean(auth.user?.is_admin))
 const mostrarBackup = computed(() => !auth.authEnabled || auth.podeAcessarBackup)
 const mostrarTour = ref(false)
 
@@ -46,20 +46,43 @@ function sair() {
   router.push({ name: 'login' })
 }
 
+function tourUserId() {
+  if (!auth.authEnabled) return 'anon'
+  const id = auth.user?.id
+  return id != null ? String(id) : null
+}
+
+function avaliarTourAutomatico() {
+  const uid = tourUserId()
+  if (uid == null) return
+  if (!ui.tourConcluido(uid)) {
+    mostrarTour.value = true
+  }
+}
+
 function iniciarTour() {
-  ui.reiniciarTour()
+  const uid = tourUserId()
+  if (uid != null) ui.reiniciarTour(uid)
   mostrarTour.value = true
 }
 
-onMounted(() => {
+onMounted(async () => {
   carregarStatusOcr()
-  if (!ui.tourConcluido()) {
-    mostrarTour.value = true
+  if (auth.authEnabled && auth.token && !auth.user) {
+    await auth.carregarUsuario()
   }
+  avaliarTourAutomatico()
   pollTimer = setInterval(() => {
     atualizarNotificacoes()
   }, 30000)
 })
+
+watch(
+  () => auth.user?.id,
+  (id) => {
+    if (id != null) avaliarTourAutomatico()
+  }
+)
 
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)

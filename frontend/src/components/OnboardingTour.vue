@@ -2,9 +2,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUiStore } from '../stores/ui'
+import { useAuthStore } from '../stores/auth'
 
 const emit = defineEmits(['fechar'])
 const ui = useUiStore()
+const auth = useAuthStore()
 const router = useRouter()
 const passo = ref(0)
 
@@ -157,9 +159,40 @@ const passos = [
     texto:
       'Consulte o Tutorial para tabelas de modelos, PDF com senha e auditoria. O Histórico regista quem enviou e quem colocou ficheiros no FULL.',
     rota: '/tutorial',
-    dicas: ['Pode rever este tour a qualquer momento: «Rever tour guiado» no menu.'],
+    dicas: [
+      'O Tutorial no menu lateral reúne guias por modelo de apólice.',
+      'No Histórico vê data, cliente, tipo de envio e quem executou a ação.',
+    ],
+  },
+  {
+    titulo: 'Backup de apólices — acesso restrito',
+    texto:
+      'A área Backup guarda cópias das apólices já enviadas. Por segurança e LGPD, o acesso a essa pasta e ao menu Backup é limitado.',
+    rota: '/dashboard',
+    largo: true,
+    dicas: [
+      'Por defeito, só administradores acedem ao Backup.',
+      'Um administrador pode conceder acesso a outros utilizadores em Utilizadores (opção «Acesso a backup»).',
+      'Se o menu Backup não aparecer no seu utilizador, fale com um administrador da equipa — ele pode ativar o acesso para si.',
+    ],
+    avisos: [
+      'Não partilhe a sua senha; o acesso ao backup é individual e controlado.',
+    ],
+    aula: false,
+    fechamento: true,
   },
 ]
+
+function tourUserId() {
+  if (!auth.authEnabled) return 'anon'
+  const id = auth.user?.id
+  return id != null ? String(id) : null
+}
+
+function concluirTour() {
+  const uid = tourUserId()
+  if (uid) ui.marcarTourConcluido(uid)
+}
 
 const atual = computed(() => passos[passo.value])
 const ultimo = computed(() => passo.value >= passos.length - 1)
@@ -172,7 +205,7 @@ function irParaPasso() {
 
 function proximo() {
   if (ultimo.value) {
-    ui.marcarTourConcluido()
+    concluirTour()
     emit('fechar')
     return
   }
@@ -188,7 +221,7 @@ function anterior() {
 }
 
 function pular() {
-  ui.marcarTourConcluido()
+  concluirTour()
   emit('fechar')
 }
 
@@ -235,6 +268,9 @@ onMounted(irParaPasso)
           <li v-for="(a, i) in atual.avisos" :key="'a' + i">{{ a }}</li>
         </ul>
 
+        <p v-if="atual.fechamento" class="tour-nota text-muted">
+          Pode rever este tour quando quiser: use <strong>Rever tour guiado</strong> no rodapé do menu lateral.
+        </p>
         <p v-if="atual.aula" class="tour-nota text-muted">
           Variáveis <code v-pre>{{ nome }}</code> são trocadas no envio. Trechos
           <code v-pre>{% if … %}</code> mostram ou escondem partes conforme os dados do PDF.
