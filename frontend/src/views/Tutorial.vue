@@ -152,7 +152,7 @@ const passos = [
           <strong>Por modelo</strong> — «Inserir bloco» cola HTML pronto (Tokio, Yelum, manual). Edite depois.
         </li>
         <li>
-          <strong>Meus atalhos</strong> — nome + HTML, «Guardar atalho»; fica na base para toda a equipa.
+          <strong>Meus atalhos</strong> — nome + HTML, «Guardar atalho»; fica na base para toda a equipe.
         </li>
       </ul>
       <h4 class="mt-3" style="font-size: 1rem">HTML básico (resumo)</h4>

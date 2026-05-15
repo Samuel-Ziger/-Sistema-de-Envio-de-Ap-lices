@@ -86,7 +86,7 @@ class Settings(BaseSettings):
 
     # Backup/pastas
     backup_folder: str = "./backup"
-    # Política interna: após N meses a equipa pode apagar pastas antigas em backup/ (ver Tutorial)
+    # Política interna: após N meses a equipe pode apagar pastas antigas em backup/ (ver Tutorial)
     backup_retention_months: int = 24
     upload_folder: str = "./uploads"
     processed_folder: str = "./processados"

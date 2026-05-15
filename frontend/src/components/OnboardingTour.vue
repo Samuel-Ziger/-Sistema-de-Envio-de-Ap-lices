@@ -40,7 +40,7 @@ const passos = [
       'PDFs suspeitos na pasta não serão enviados enquanto o bloqueio estiver ativo — ganha tempo para analisar o incidente com calma.',
     ],
     avisos: [
-      'Guarde a chave de emergência fora do servidor (cofre da equipa de TI). Sem ela, não há como voltar à operação normal.',
+      'Guarde a chave de emergência fora do servidor (cofre da equipe de TI). Sem ela, não há como voltar à operação normal.',
       'Desative o SOC assim que o incidente estiver controlado — os dados voltam à criptografia padrão do .env.',
     ],
   },
@@ -99,13 +99,13 @@ const passos = [
     ],
   },
   {
-    titulo: 'Atalhos: criar os seus (equipa)',
+    titulo: 'Atalhos: criar os seus (HTML)',
     texto:
       'Na aba «Meus atalhos», crie trechos HTML reutilizáveis (rodapé, aviso LGPD, texto da corretora…).',
     rota: '/corpos-email',
     largo: true,
     dicas: [
-      'Preencha Nome e HTML, clique «Guardar atalho» — fica disponível para toda a equipa.',
+      'Preencha Nome e HTML, clique «Guardar atalho» — fica disponível para toda a equipe.',
       'Use nomes descritivos: «Rodapé padrão», «Aviso sinistro 0800», etc.',
       'Para inserir num corpo: clique no nome do atalho com o cursor no editor HTML.',
       'Evite colar direto do Word — traz formatação estranha e aspas curvas que quebram o HTML.',
@@ -173,7 +173,7 @@ const passos = [
     dicas: [
       'Por defeito, só administradores acedem ao Backup.',
       'Um administrador pode conceder acesso a outros utilizadores em Utilizadores (opção «Acesso a backup»).',
-      'Se o menu Backup não aparecer no seu utilizador, fale com um administrador da equipa — ele pode ativar o acesso para si.',
+      'Se o menu Backup não aparecer no seu utilizador, fale com um administrador da equipe — ele pode ativar o acesso para si.',
     ],
     avisos: [
       'Não partilhe a sua senha; o acesso ao backup é individual e controlado.',
